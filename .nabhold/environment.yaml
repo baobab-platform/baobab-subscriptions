@@ -1,0 +1,27 @@
+schema:
+  name: "nabhold-development-environment-contract"
+  version: "1.0"
+application:
+  name: "baobab-subscriptions"
+  version: "0.1.0"
+environment:
+  provider: "baobab-dev"
+  profile: "full"
+  minimum_version: "1.4.1"
+  contract_minimum_version: "1.0"
+compatibility_policy:
+  strict_runtime_versions: true
+  allow_newer_patch_versions: true
+  allow_newer_minor_versions: false
+  allow_older_versions: false
+validation:
+  required_capabilities:
+    - "languages.java"
+    - "development.maven"
+    - "database.postgresql"
+    - "development.docker"
+    - "development.github_cli"
+notes:
+  - "Headless KillBill engine. `full` is the narrowest existing baobab-dev profile that covers Java 17 + Maven + a PostgreSQL client (KillBill also supports MySQL, but this org standardizes on Postgres per baobab-erp's precedent)."
+  - "Codespaces/Dev Containers run as one of docker-compose.yml's services (workspace), with a local Postgres backing service brought up automatically alongside it."
+  - "This repo is still scaffolded (no KillBill integration code yet) — postCreateCommand intentionally runs only baobab-verify --contract. Add the real dependency-install/bootstrap step here once a pom.xml exists."

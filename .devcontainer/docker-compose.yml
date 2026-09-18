@@ -1,0 +1,33 @@
+services:
+  workspace:
+    image: ghcr.io/nabhold/baobab-dev:1.4.1
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/baobab-subscriptions:cached
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: killbill
+      DB_USER: killbill
+      DB_PASS: dev-only-password
+      DATABASE_URL: postgresql://killbill:dev-only-password@postgres:5432/killbill
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: killbill
+      POSTGRES_USER: killbill
+      POSTGRES_PASSWORD: dev-only-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U killbill -d killbill"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
