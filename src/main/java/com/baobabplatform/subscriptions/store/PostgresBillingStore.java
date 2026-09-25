@@ -23,7 +23,7 @@ import java.util.UUID;
 
 /** PostgreSQL persistence through a HikariCP pool. Schema changes are versioned SQL applied at startup. */
 public final class PostgresBillingStore implements BillingStore {
-    private static final String[] MIGRATIONS = {"db/V1__billing.sql"};
+    private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -127,6 +127,11 @@ public final class PostgresBillingStore implements BillingStore {
     }
 
     @Override
+    public List<AuditRecord> audit(String tenantId) {
+        return transact(tx -> ((SqlTx) tx).audit(tenantId));
+    }
+
+    @Override
     public void close() {
         pool.close();
     }
@@ -217,13 +222,14 @@ public final class PostgresBillingStore implements BillingStore {
         @Override
         public void insertProjection(Projection p) {
             try (PreparedStatement q = c.prepareStatement("INSERT INTO billing.projection (billing_subscription_id, tenant_id, "
-                    + "product_subscription_id, version, document, updated_at) VALUES (?, ?, ?, ?, ?::jsonb, ?)")) {
+                    + "product_subscription_id, version, document, updated_at, authoritative_revision) VALUES (?, ?, ?, ?, ?::jsonb, ?, ?)")) {
                 q.setString(1, p.billingSubscriptionId());
                 q.setString(2, p.tenantId());
                 q.setString(3, p.productSubscriptionId());
                 q.setLong(4, p.version());
                 q.setString(5, json(p));
                 q.setTimestamp(6, Timestamp.from(p.updatedAt()));
+                q.setLong(7, p.authoritativeRevision());
                 q.executeUpdate();
             } catch (SQLException e) {
                 throw fail(e);
@@ -233,13 +239,14 @@ public final class PostgresBillingStore implements BillingStore {
         @Override
         public void updateProjection(Projection p, long expectedVersion) {
             try (PreparedStatement q = c.prepareStatement("UPDATE billing.projection SET version = ?, document = ?::jsonb, "
-                    + "updated_at = ? WHERE tenant_id = ? AND billing_subscription_id = ? AND version = ?")) {
+                    + "updated_at = ?, authoritative_revision = ? WHERE tenant_id = ? AND billing_subscription_id = ? AND version = ?")) {
                 q.setLong(1, p.version());
                 q.setString(2, json(p));
                 q.setTimestamp(3, Timestamp.from(p.updatedAt()));
-                q.setString(4, p.tenantId());
-                q.setString(5, p.billingSubscriptionId());
-                q.setLong(6, expectedVersion);
+                q.setLong(4, p.authoritativeRevision());
+                q.setString(5, p.tenantId());
+                q.setString(6, p.billingSubscriptionId());
+                q.setLong(7, expectedVersion);
                 if (q.executeUpdate() != 1) {
                     throw new ConflictException("the projection changed concurrently", null);
                 }
@@ -294,6 +301,39 @@ public final class PostgresBillingStore implements BillingStore {
                 q.executeUpdate();
             } catch (SQLException ex) {
                 throw fail(ex);
+            }
+        }
+
+        @Override
+        public void appendAudit(AuditRecord a) {
+            try (PreparedStatement q = c.prepareStatement("INSERT INTO billing.audit_record (audit_id, tenant_id, occurred_at, "
+                    + "resource_type, resource_id, operation, record) VALUES (?, ?, ?, ?, ?, ?, ?::jsonb)")) {
+                q.setObject(1, a.auditId());
+                q.setString(2, a.tenantId());
+                q.setTimestamp(3, Timestamp.from(a.occurredAt()));
+                q.setString(4, a.resourceType());
+                q.setString(5, a.resourceId());
+                q.setString(6, a.operation());
+                q.setString(7, json(a));
+                q.executeUpdate();
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        List<AuditRecord> audit(String tenantId) {
+            try (PreparedStatement q = c.prepareStatement("SELECT record::text FROM billing.audit_record WHERE tenant_id = ? "
+                    + "ORDER BY occurred_at, audit_id")) {
+                q.setString(1, tenantId);
+                List<AuditRecord> out = new ArrayList<>();
+                try (ResultSet rs = q.executeQuery()) {
+                    while (rs.next()) {
+                        out.add(read(rs.getString(1), AuditRecord.class));
+                    }
+                }
+                return out;
+            } catch (SQLException e) {
+                throw fail(e);
             }
         }
 

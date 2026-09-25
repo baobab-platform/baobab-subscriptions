@@ -64,6 +64,7 @@
       "required": [
         "tenant_id",
         "product_subscription_id",
+        "authoritative_revision",
         "product_id",
         "subscription_type",
         "classification"
@@ -75,6 +76,11 @@
         },
         "product_subscription_id": {
           "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The Control Plane ProductSubscription revision this state reflects (ADR-SUB-0003 section 16). A request carrying a revision lower than the one applied never regresses the projection."
         },
         "product_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/productId"
@@ -106,10 +112,12 @@
         "tenant_id",
         "product_subscription_id",
         "product_id",
+        "authoritative_revision",
         "subscription_type",
         "classification",
         "billing_policy",
         "billing_state",
+        "operational_condition",
         "readiness",
         "provider",
         "version",
@@ -126,6 +134,11 @@
         },
         "product_subscription_id": {
           "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The Control Plane ProductSubscription revision this state reflects (ADR-SUB-0003 section 16). A request carrying a revision lower than the one applied never regresses the projection."
         },
         "product_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/productId"
@@ -153,22 +166,60 @@
         "billing_state": {
           "$ref": "domain.schema.json#/$defs/billingState"
         },
+        "operational_condition": {
+          "$ref": "domain.schema.json#/$defs/operationalCondition"
+        },
         "readiness": {
           "type": "object",
           "additionalProperties": false,
           "required": [
             "status",
-            "reasons"
+            "facts",
+            "blockers"
           ],
+          "description": "Readiness as separate facts (ADR-SUB-0003 section 46, ADR-SUB-0006 section 57), not one boolean. READY has no blockers; BLOCKED has at least one.",
           "properties": {
             "status": {
               "$ref": "domain.schema.json#/$defs/readinessStatus"
             },
-            "reasons": {
+            "facts": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "classification_valid",
+                "projection_valid",
+                "metering_available",
+                "billing_configuration_complete",
+                "provider_ready",
+                "payment_path_ready"
+              ],
+              "properties": {
+                "classification_valid": {
+                  "type": "boolean"
+                },
+                "projection_valid": {
+                  "type": "boolean"
+                },
+                "metering_available": {
+                  "type": "boolean"
+                },
+                "billing_configuration_complete": {
+                  "type": "boolean"
+                },
+                "provider_ready": {
+                  "type": "boolean"
+                },
+                "payment_path_ready": {
+                  "type": "boolean"
+                }
+              },
+              "description": "billing_configuration_complete: pricing, currency and billing account are resolvable where the policy requires them. provider_ready: a production-capable billing provider holds the projection where the policy requires one. payment_path_ready: a real payment path exists where the policy requires payment. For zero-charge policies the last three are not required for READY."
+            },
+            "blockers": {
               "type": "array",
               "uniqueItems": true,
               "items": {
-                "$ref": "domain.schema.json#/$defs/readinessReason"
+                "$ref": "domain.schema.json#/$defs/billingBlocker"
               }
             }
           },
@@ -183,14 +234,27 @@
               },
               "then": {
                 "properties": {
-                  "reasons": {
+                  "blockers": {
                     "maxItems": 0
+                  },
+                  "facts": {
+                    "properties": {
+                      "classification_valid": {
+                        "const": true
+                      },
+                      "projection_valid": {
+                        "const": true
+                      },
+                      "metering_available": {
+                        "const": true
+                      }
+                    }
                   }
                 }
               },
               "else": {
                 "properties": {
-                  "reasons": {
+                  "blockers": {
                     "minItems": 1
                   }
                 }
@@ -280,7 +344,7 @@
           }
         },
         {
-          "description": "Billing that requires money is never ACTIVE or READY on a simulated provider: no fake financial readiness.",
+          "description": "Billing that requires money is never ACTIVE or READY on a simulated provider, and says so: no fake financial readiness.",
           "if": {
             "properties": {
               "billing_policy": {
@@ -310,6 +374,18 @@
                 "properties": {
                   "status": {
                     "const": "BLOCKED"
+                  },
+                  "facts": {
+                    "properties": {
+                      "provider_ready": {
+                        "const": false
+                      }
+                    }
+                  },
+                  "blockers": {
+                    "contains": {
+                      "const": "BILLING_PROVIDER_NOT_CONFIGURED"
+                    }
                   }
                 }
               }
@@ -328,7 +404,7 @@
             "properties": {
               "readiness": {
                 "properties": {
-                  "reasons": {
+                  "blockers": {
                     "contains": {
                       "const": "PROJECTION_SUSPENDED"
                     }
@@ -342,7 +418,10 @@
           "if": {
             "properties": {
               "billing_state": {
-                "const": "CANCELLED"
+                "enum": [
+                  "TERMINATING",
+                  "TERMINATED"
+                ]
               }
             }
           },
@@ -350,9 +429,51 @@
             "properties": {
               "readiness": {
                 "properties": {
-                  "reasons": {
+                  "blockers": {
                     "contains": {
-                      "const": "PROJECTION_CANCELLED"
+                      "const": "PROJECTION_TERMINATED"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "description": "Billing that requires money is READY only when configuration, provider and payment path are all ready.",
+          "if": {
+            "properties": {
+              "billing_policy": {
+                "properties": {
+                  "billing_required": {
+                    "const": true
+                  }
+                }
+              },
+              "readiness": {
+                "properties": {
+                  "status": {
+                    "const": "READY"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "readiness": {
+                "properties": {
+                  "facts": {
+                    "properties": {
+                      "billing_configuration_complete": {
+                        "const": true
+                      },
+                      "provider_ready": {
+                        "const": true
+                      },
+                      "payment_path_ready": {
+                        "const": true
+                      }
                     }
                   }
                 }
@@ -367,12 +488,18 @@
       "additionalProperties": false,
       "required": [
         "tenant_id",
+        "authoritative_revision",
         "reason"
       ],
-      "description": "Suspend or cancel a projection. Commands name the tenant they act for; another tenant's projection is not found.",
+      "description": "Suspend, resume or terminate a projection by a governed Control Plane instruction (ADR-SUB-0003 sections 34-36). Commands name the tenant they act for, and the authoritative revision they reflect; another tenant's projection is not found, and an older revision never undoes a newer instruction.",
       "properties": {
         "tenant_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The Control Plane ProductSubscription revision this state reflects (ADR-SUB-0003 section 16). A request carrying a revision lower than the one applied never regresses the projection."
         },
         "reason": {
           "type": "string",

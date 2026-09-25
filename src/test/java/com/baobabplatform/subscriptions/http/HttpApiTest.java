@@ -171,6 +171,18 @@ class HttpApiTest {
         HttpResponse<String> usage = call("POST", "/v1/billing-projections/" + id + "/usage", bearer, newKey(),
                 Fixtures.usage(Fixtures.ACME_TENANT, "http-1"), Map.of());
         assertEquals(201, usage.statusCode(), usage.body());
+
+        HttpResponse<String> suspended = call("POST", "/v1/billing-projections/" + id + "/suspend", bearer, newKey(),
+                Fixtures.command(Fixtures.ACME_TENANT, 2, "governed review"), Map.of());
+        assertEquals("SUSPENDED", Json.mapper().readTree(suspended.body()).get("billing_state").asText(), suspended.body());
+        HttpResponse<String> resumed = call("POST", "/v1/billing-projections/" + id + "/resume", bearer, newKey(),
+                Fixtures.command(Fixtures.ACME_TENANT, 3, "review closed"), Map.of());
+        assertEquals("PENDING_CONFIGURATION", Json.mapper().readTree(resumed.body()).get("billing_state").asText(), resumed.body());
+        HttpResponse<String> terminated = call("POST", "/v1/billing-projections/" + id + "/terminate", bearer, newKey(),
+                Fixtures.command(Fixtures.ACME_TENANT, 4, "contract ended"), Map.of());
+        assertEquals("TERMINATED", Json.mapper().readTree(terminated.body()).get("billing_state").asText(), terminated.body());
+        assertProblem(call("POST", "/v1/billing-projections/" + id + "/cancel", bearer, newKey(),
+                Fixtures.command(Fixtures.ACME_TENANT, 5, "x"), Map.of()), 404, "ROUTE_NOT_FOUND");
     }
 
     @Test

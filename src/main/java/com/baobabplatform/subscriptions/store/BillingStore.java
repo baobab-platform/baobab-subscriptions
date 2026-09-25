@@ -20,6 +20,9 @@ public interface BillingStore extends AutoCloseable {
     /** Events recorded for a tenant, oldest first (for diagnostics and tests; no relay exists yet). */
     List<OutboxEvent> events(String tenantId);
 
+    /** Audit records for a tenant, oldest first. */
+    List<AuditRecord> audit(String tenantId);
+
     @Override
     void close();
 
@@ -51,5 +54,7 @@ public interface BillingStore extends AutoCloseable {
         void insertUsage(UsageRecord usage);
 
         void appendEvent(OutboxEvent event);
+
+        void appendAudit(AuditRecord record);
     }
 }
