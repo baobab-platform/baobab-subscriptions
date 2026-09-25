@@ -1,64 +1,46 @@
-<!-- Target path: nabhold/engine-template/README.md (becomes <new-repo>/README.md in any repo created from this template). -->
+# baobab-subscriptions
 
-# <engine-repo-name>
+> **Status:** architecture accepted ([ADR-SUB-0001](docs/adr/ADR-SUB-0001%20—%20Adopt%20Kill%20Bill.md)). The runnable billing façade and its temporary provider are being built. **The Kill Bill integration is NOT YET IMPLEMENTED.**
 
-<!--
-  TODO before this repo's first real PR merges — then delete this comment block:
-  1. Replace the title above with the real repo name (e.g. `baobab-iam`), matching
-     the naming convention: short, hyphenated, no `-engine`/`-control-plane` suffix
-     (see nabhold/baobab-cp, nabhold/baobab-trade, nabhold/baobab-erp,
-     nabhold/baobab-pulse, nabhold/baobab-cms for precedent).
-  2. Replace ADR-000N below with the real ADR number recording this engine's
-     addition to the ecosystem. File it in baobab-platform/shared/docs/adr/, continuing
-     the existing sequence (see that repo's docs/adr/ for the next free number).
-  3. Fill in the "Role", "Ownership", and "Contract dependencies" sections below
-     with what's actually true for this engine — do not leave the placeholder
-     prose in place.
-  4. See TEMPLATE-USAGE.md in this repo's root for the full activation checklist
-     (CODEOWNERS, devcontainer, Foundation gates, branch protection) — do that
-     before writing application code, then delete that file too.
--->
-
-> **Status:** scaffolded, not yet built — see ADR-000N.
+The headless subscription billing engine of the Baobab platform. It turns a ProductSubscription the Control Plane has authorised and classified into a billing projection. That covers recurring billing, usage metering and credits, through a Baobab-owned API with Kill Bill as the foundational implementation behind it.
 
 ## Role
 
-One paragraph: what this engine owns, in the ecosystem's own vocabulary — and,
-just as important, what it explicitly does *not* own (business logic that
-belongs to another engine, contracts that belong to `baobab-platform/shared`,
-infrastructure that belongs to `nabhold/infrastructure`). Model this on the
-"Role" section of an existing repo's README rather than writing it from
-scratch — see `nabhold/infrastructure`'s README for the shape.
+### This engine owns
 
-## Ownership
+- billing projections of Control Plane ProductSubscriptions;
+- billing account projections keyed to a PlatformAccount (a reference only, never the PlatformAccount's identity);
+- billing cycles, recurring billing, usage metering and rating, and credits;
+- billing-provider integration: Kill Bill, behind the `BillingProvider` port.
 
-This repository will contain:
+### It explicitly does not own
 
-- TODO
+| Concern | Owner |
+|---|---|
+| ProductSubscription, subscription classification (INTERNAL / COMMERCIAL / …) and its provenance, INTERNAL eligibility | `baobab-cp` |
+| CapabilityGrants and entitlement | `baobab-cp` |
+| Tenant, legal entity, PlatformAccount identity | `baobab-cp` |
+| Payment execution, orchestration and routing | `baobab-payments` |
+| Accounting, ledger, receivables, revenue recognition | `baobab-erp` |
+| Client-application expiry, admission, tenant onboarding | `baobab-cp` |
 
-It must not contain:
+INTERNAL subscriptions are billed at zero monetary charge. They are still metered, entitled, audited and readiness-controlled, and this engine never calls `baobab-payments` for them.
 
-- TODO
+## Contracts
 
-## Contract dependencies
+All cross-repository contracts are canonical in [`baobab-platform/shared`](https://github.com/baobab-platform/shared):
 
-Note which `baobab-platform/shared` contracts this engine consumes or publishes
-(event schemas, API contracts, the Development Environment Contract), and at
-what pinned version/tag — e.g. `baobab-platform/shared@v1`. Do not commit to a
-contract here until it's actually confirmed; an empty scaffold doesn't need
-one yet.
+| Contract | Use |
+|---|---|
+| `contracts/subscriptions/v1` | The Baobab Billing API (billing projection, usage) and its events |
+| `contracts/product/v1` | The ProductSubscription classification this engine consumes, and `billing-policy.yaml` |
+| `contracts/payments/v1` | The payment API this engine calls for commercial payment |
+
+## Documentation
+
+- [ADR-SUB-0001 — Adopt Kill Bill as the Foundational Headless Baobab Subscription Billing Engine](docs/adr/ADR-SUB-0001%20—%20Adopt%20Kill%20Bill.md)
+- [Contracts consumed and published](contracts/README.md)
 
 ## Local development
 
-This repository uses the shared `baobab-dev` devcontainer image. See
-`.baobab/environment.yaml` for the declared profile and required
-capabilities, and `.devcontainer/devcontainer.json` for the pinned image tag.
-
-(Both of those are still `.example` files until this repo's language stack
-and `baobab-dev` profile are decided — see `TEMPLATE-USAGE.md`.)
-
-## Foundation status
-
-Foundation 0 (this scaffold: README, CODEOWNERS, branch protection) is
-complete. Foundation 1 (application code, real devcontainer/environment
-declaration, Foundation CI gates) has not started.
+This repository uses the shared `baobab-dev` devcontainer (`full` profile: Java and Maven, with a local PostgreSQL service). See `.baobab/environment.yaml` and `.devcontainer/`.
