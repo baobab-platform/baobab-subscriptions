@@ -26,7 +26,7 @@
     <main.class>com.baobabplatform.subscriptions.Application</main.class>
 
     <jackson.version>2.22.3</jackson.version>
-    <json-schema-validator.version>1.5.9</json-schema-validator.version>
+    <json-schema-validator.version>3.0.7</json-schema-validator.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <postgresql.version>42.7.13</postgresql.version>
     <hikaricp.version>7.1.0</hikaricp.version>
