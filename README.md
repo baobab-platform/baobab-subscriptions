@@ -45,7 +45,7 @@ A Java 21 service on the JDK HTTP server. It uses Jackson, a JSON Schema validat
 | `POST /v1/billing-projections` | `billing:manage` | Ensure the projection of one classified ProductSubscription (`EnsureBillingProjectionRequest`). It is created once and updated in place on reclassification. |
 | `GET /v1/tenants/{tenant_id}/billing-projections/{billing_subscription_id}` | `billing:read` | Read a projection |
 | `GET /v1/tenants/{tenant_id}/product-subscriptions/{product_subscription_id}/billing-projection` | `billing:read` | Read a subscription's projection |
-| `POST /v1/billing-projections/{id}/suspend` and `/cancel` | `billing:manage` | Governed suspension and cancellation (`BillingProjectionCommand`) |
+| `POST /v1/billing-projections/{id}/suspend`, `/resume` and `/terminate` | `billing:manage` | Governed lifecycle commands (`BillingProjectionCommand`, carrying the Control Plane's `authoritative_revision`). `TERMINATED` is final. |
 | `POST /v1/billing-projections/{id}/usage` | `usage:record` | Meter usage (`RecordUsageRequest`). A source is metered once. |
 | `GET /health/live`, `GET /health/ready` | none | Liveness, and readiness of the store and provider. Readiness reports `commercial_billing: NOT_CONFIGURED` while the provider is simulated. |
 
@@ -54,11 +54,17 @@ A Java 21 service on the JDK HTTP server. It uses Jackson, a JSON Schema validat
 - **Authentication.** Callers present Baobab workload tokens: the configured issuer, the audience `baobab-subscriptions`, `actor_type: workload`, an allowed client (`baobab-control-plane` by default) and the route's scope. Static secrets are not accepted.
 - **Idempotency.** Every mutation needs an `Idempotency-Key`. A repeat with the same body replays the stored response, flagged `Idempotent-Replayed: true`. The same key with a different body is refused. Keys are scoped per tenant.
 - **Tenant isolation.** Every read and write is keyed by `tenant_id`. Another tenant's identifiers return 404.
+- **Lifecycle (ADR-SUB-0003).**
+  - `billing_state` is `PENDING_CONFIGURATION`, `PROVISIONING`, `ACTIVE`, `SUSPENDED`, `TERMINATING` or `TERMINATED`.
+  - `operational_condition` is reported separately.
+  - Every request and command carries the Control Plane's `authoritative_revision`. An older one is refused (`STALE_AUTHORITATIVE_REVISION`) and never regresses the projection. Different terms at the same revision are refused as `CLASSIFICATION_REVISION_CONFLICT`.
+  - A late resume never resurrects a terminated projection.
+- **Audit (ADR-SUB-0016 §35-36).** Every material change writes an append-only audit record in the same transaction. The record carries the workload and actor, previous and resulting state, reason, idempotency key, correlation, authoritative revision, policy version and provider reference.
 - **Policy.** The engine applies Shared's `billing-policy.yaml` and never infers a classification.
   - **INTERNAL:** zero charge, no billing required, metered, and `ACTIVE`/`READY`. Its usage is not billable, and the payments port is never touched.
-  - **COMMERCIAL** (and any priced type) on the temporary provider: `PENDING_CONFIGURATION` and `BLOCKED`, with the reasons `BILLING_PROVIDER_NOT_CONFIGURED` and `PAYMENT_PROVIDER_NOT_CONFIGURED`.
+  - **COMMERCIAL** (and any priced type) on the temporary provider: `PENDING_CONFIGURATION` and `BLOCKED`. The readiness facts report `billing_configuration_complete`, `provider_ready` and `payment_path_ready` as false, with the blockers `PRICING_CONFIGURATION_MISSING`, `BILLING_ACCOUNT_MISSING`, `BILLING_PROVIDER_NOT_CONFIGURED` and `PAYMENT_PATH_NOT_READY` (ADR-SUB-0006 §58).
 - **Contracts.** Requests, responses and events are validated against the Shared contracts vendored under `src/main/resources/contracts` and pinned in `contracts.lock.yaml`. Errors are RFC 9457 problems (`errors/v1`).
-- **Events.** `billing-subscription.created`, `.suspended`, `.cancelled` and `usage.recorded` are written as canonical envelopes to the engine's outbox, in the same transaction as the change they describe. Relaying them to the event backbone is **not built yet**.
+- **Events.** `billing-subscription.created`, `.suspended`, `.resumed`, `.terminated` and `usage.recorded` are written as canonical envelopes to the engine's outbox, in the same transaction as the change they describe. Relaying them to the event backbone is **not built yet**.
 - **Observability.** Logs are JSON lines carrying the route template, status, duration, correlation ID and client, and never tokens or bodies. `X-Correlation-ID` is honoured or minted, and echoed back.
 
 ### Configuration
@@ -92,6 +98,8 @@ The container runs as a non-root user (UID 10001), carries OCI labels, and has a
 - metrics.
 
 ## Documentation
+
+- [ADR alignment status](docs/adr-alignment.md): how far the service implements ADR-SUB-0001 to ADR-SUB-0018.
 
 - [ADR-SUB-0001 — Adopt Kill Bill as the Foundational Headless Baobab Subscription Billing Engine](docs/adr/ADR-SUB-0001%20—%20Adopt%20Kill%20Bill.md)
 - [Contracts consumed and published](contracts/README.md)

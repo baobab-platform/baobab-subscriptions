@@ -24,13 +24,14 @@
     "billingState": {
       "type": "string",
       "enum": [
-        "ACTIVE",
         "PENDING_CONFIGURATION",
-        "PENDING_PAYMENT_METHOD",
+        "PROVISIONING",
+        "ACTIVE",
         "SUSPENDED",
-        "CANCELLED"
+        "TERMINATING",
+        "TERMINATED"
       ],
-      "description": "ACTIVE: billing is running as its policy requires (for INTERNAL: metering at zero charge). PENDING_CONFIGURATION / PENDING_PAYMENT_METHOD: billing is required but not yet possible. SUSPENDED and CANCELLED follow governed commands; CANCELLED is final."
+      "description": "The billing projection's business lifecycle (ADR-SUB-0003 section 5). PENDING_CONFIGURATION: a valid upstream ProductSubscription exists but billing cannot yet be established (the blockers say why). PROVISIONING: configuration exists and provider resources are being established. ACTIVE: billing is operational as its policy requires (for INTERNAL: metering at zero charge, with no monetary provider). SUSPENDED: billing deliberately suspended by a governed instruction; it does not revoke entitlement. TERMINATING: termination is in progress. TERMINATED: final for this projection. Infrastructure conditions never appear here: they are operationalCondition."
     },
     "readinessStatus": {
       "type": "string",
@@ -39,17 +40,25 @@
         "BLOCKED"
       ]
     },
-    "readinessReason": {
+    "billingBlocker": {
       "type": "string",
       "enum": [
+        "CLASSIFICATION_MISSING",
+        "CLASSIFICATION_UNSUPPORTED",
+        "CLASSIFICATION_REVISION_CONFLICT",
+        "BILLING_POLICY_MISSING",
+        "BILLING_POLICY_UNSUPPORTED",
+        "PRICING_CONFIGURATION_MISSING",
+        "CURRENCY_CONFIGURATION_MISSING",
+        "BILLING_ACCOUNT_MISSING",
         "BILLING_PROVIDER_NOT_CONFIGURED",
-        "PAYMENT_PROVIDER_NOT_CONFIGURED",
+        "PAYMENT_PATH_NOT_READY",
         "PAYMENT_METHOD_REQUIRED",
         "USAGE_METERING_UNAVAILABLE",
         "PROJECTION_SUSPENDED",
-        "PROJECTION_CANCELLED"
+        "PROJECTION_TERMINATED"
       ],
-      "description": "Why a billing projection cannot currently do what its policy requires. Precise blockers are preferred to fake readiness."
+      "description": "A machine-readable reason billing cannot currently do what its policy requires (ADR-SUB-0006 section 58). Automation depends on these codes, never on message text. Precise blockers are preferred to fake readiness."
     },
     "billingProviderKind": {
       "type": "string",
@@ -65,6 +74,17 @@
       "minLength": 2,
       "maxLength": 128,
       "description": "Implementation-neutral usage metric, e.g. api.calls, storage.gb-hours, events.published."
+    },
+    "operationalCondition": {
+      "type": "string",
+      "enum": [
+        "HEALTHY",
+        "DEGRADED",
+        "RECONCILIATION_REQUIRED",
+        "RETRYING",
+        "BLOCKED"
+      ],
+      "description": "Operational condition, kept separate from the business lifecycle (ADR-SUB-0003 section 11): a provider outage makes an ACTIVE projection DEGRADED, never changes its billing_state."
     }
   }
 }

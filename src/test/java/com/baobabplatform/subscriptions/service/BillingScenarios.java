@@ -5,6 +5,7 @@ import static com.baobabplatform.subscriptions.Fixtures.ZURI_TENANT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,9 +14,11 @@ import com.baobabplatform.subscriptions.contract.Contracts;
 import com.baobabplatform.subscriptions.json.Json;
 import com.baobabplatform.subscriptions.policy.BillingPolicies;
 import com.baobabplatform.subscriptions.provider.TemporaryProvider;
+import com.baobabplatform.subscriptions.store.AuditRecord;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.OutboxEvent;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -28,8 +31,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The ADR-SUB-0001 behaviour every store must give. Each subclass supplies a
- * store; every output is checked against the pinned Shared contract.
+ * The ADR-SUB-0001/0003/0006/0016 behaviour every store must give. Each
+ * subclass supplies a store; every output is checked against the pinned
+ * Shared contract.
  */
 abstract class BillingScenarios {
     protected BillingStore store;
@@ -39,7 +43,7 @@ abstract class BillingScenarios {
 
     protected abstract BillingStore newStore();
 
-    /** A per-test prefix, so scenarios sharing a database never collide. */
+    /** A per-test suffix, so scenarios sharing a database never collide. */
     protected String unique() {
         return "";
     }
@@ -51,12 +55,9 @@ abstract class BillingScenarios {
         billing = new BillingService(store, new TemporaryProvider(), payments, BillingPolicies.load(), Fixtures.CLOCK);
     }
 
-    protected String key() {
-        return "idem-" + unique() + "-" + (++keys) + "-" + UUID.randomUUID();
-    }
-
-    protected static String corr() {
-        return UUID.randomUUID().toString();
+    protected CallContext ctx() {
+        return new CallContext("baobab-control-plane", "service-account-cp", "idem-" + unique() + "-" + (++keys) + "-" + UUID.randomUUID(),
+                UUID.randomUUID().toString());
     }
 
     protected byte[] scoped(byte[] body) {
@@ -64,7 +65,7 @@ abstract class BillingScenarios {
         if (prefix.isEmpty()) {
             return body;
         }
-        String s = new String(body, java.nio.charset.StandardCharsets.UTF_8)
+        String s = new String(body, StandardCharsets.UTF_8)
                 .replace(ZURI_TENANT, ZURI_TENANT + prefix).replace(ACME_TENANT, ACME_TENANT + prefix);
         return Fixtures.json(s);
     }
@@ -77,17 +78,28 @@ abstract class BillingScenarios {
         return ACME_TENANT + unique();
     }
 
+    private byte[] cmd(String tenant, long revision, String reason) {
+        return scoped(Fixtures.command(tenant, revision, reason));
+    }
+
     static void conforms(String definition, JsonNode node) {
         List<String> problems = Contracts.problems(Contracts.def(Contracts.BILLING, definition), node);
         assertTrue(problems.isEmpty(), definition + " breaks the contract: " + problems + "\n" + node);
+    }
+
+    static List<String> blockers(JsonNode projection) {
+        List<String> out = new ArrayList<>();
+        projection.at("/readiness/blockers").forEach(b -> out.add(b.asText()));
+        return out;
     }
 
     void eventsConform(String tenant) throws Exception {
         for (OutboxEvent e : store.events(tenant)) {
             JsonNode envelope = Json.mapper().readTree(e.envelopeJson());
             assertTrue(Contracts.problems(Contracts.ENVELOPE, envelope).isEmpty(), "envelope: " + Contracts.problems(Contracts.ENVELOPE, envelope));
-            String def = envelope.get("dataschema").asText().substring(envelope.get("dataschema").asText().lastIndexOf('/') + 1);
-            List<String> problems = Contracts.problems(Contracts.def(Contracts.EVENTS, def), envelope.get("data"));
+            String schema = envelope.get("dataschema").asText();
+            List<String> problems = Contracts.problems(Contracts.def(Contracts.EVENTS, schema.substring(schema.lastIndexOf('/') + 1)),
+                    envelope.get("data"));
             assertTrue(problems.isEmpty(), e.eventType() + ": " + problems);
             assertTrue(e.eventType().startsWith("com.baobab-platform.subscriptions."), e.eventType());
         }
@@ -95,7 +107,7 @@ abstract class BillingScenarios {
 
     @Test
     void internalIsReadyAtZeroChargeAndNeverTouchesPayments() throws Exception {
-        var created = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr());
+        var created = billing.ensure(ctx(), scoped(Fixtures.zuriInternal()));
         assertEquals(201, created.status());
         JsonNode p = created.body();
         conforms("BillingProjection", p);
@@ -103,111 +115,159 @@ abstract class BillingScenarios {
         assertEquals("ZERO", p.at("/billing_policy/monetary_charge").asText());
         assertFalse(p.at("/billing_policy/billing_required").asBoolean());
         assertEquals("NEVER", p.at("/billing_policy/payment_execution").asText());
-        assertTrue(p.at("/billing_policy/usage_metering").asBoolean());
         assertEquals("ACTIVE", p.get("billing_state").asText());
+        assertEquals("HEALTHY", p.get("operational_condition").asText());
         assertEquals("READY", p.at("/readiness/status").asText());
-        assertEquals(0, p.at("/readiness/reasons").size());
-        assertEquals("TEMPORARY", p.at("/provider/kind").asText());
+        assertEquals(List.of(), blockers(p));
+        assertTrue(p.at("/readiness/facts/metering_available").asBoolean());
+        assertEquals(2, p.get("authoritative_revision").asInt());
         assertTrue(p.at("/provider/simulated").asBoolean());
-        assertEquals("adm_01k9zuribeans", p.at("/classification/classification_reference").asText());
 
-        var usage = billing.recordUsage(key(), p.get("billing_subscription_id").asText(), scoped(Fixtures.usage(ZURI_TENANT, "meter-batch-1")), corr());
-        assertEquals(201, usage.status());
+        String id = p.get("billing_subscription_id").asText();
+        var usage = billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ZURI_TENANT, "meter-batch-1")));
         conforms("UsageRecord", usage.body());
         assertFalse(usage.body().get("billable").asBoolean(), "INTERNAL usage is metered, not billable");
 
-        billing.suspend(key(), p.get("billing_subscription_id").asText(), scoped(Fixtures.command(ZURI_TENANT, "review")), corr());
-        billing.cancel(key(), p.get("billing_subscription_id").asText(), scoped(Fixtures.command(ZURI_TENANT, "ended")), corr());
+        billing.suspend(ctx(), id, cmd(ZURI_TENANT, 3, "review"));
+        billing.resume(ctx(), id, cmd(ZURI_TENANT, 4, "review closed"));
+        billing.terminate(ctx(), id, cmd(ZURI_TENANT, 5, "ended"));
         assertEquals(0, payments.calls.get(), "INTERNAL billing must never touch the payments port");
 
         List<String> types = store.events(zuri()).stream().map(OutboxEvent::eventType).toList();
-        assertEquals(List.of(BillingService.CREATED, BillingService.USAGE_RECORDED, BillingService.SUSPENDED, BillingService.CANCELLED), types);
+        assertEquals(List.of(BillingService.CREATED, BillingService.USAGE_RECORDED, BillingService.SUSPENDED, BillingService.RESUMED,
+                BillingService.TERMINATED), types);
         eventsConform(zuri());
     }
 
     @Test
-    void commercialOnTheTemporaryProviderIsHonestlyBlocked() {
-        JsonNode p = billing.ensure(key(), scoped(Fixtures.acmeCommercial()), corr()).body();
+    void commercialOnTheTemporaryProviderNamesEveryMissingPiece() {
+        JsonNode p = billing.ensure(ctx(), scoped(Fixtures.acmeCommercial())).body();
         conforms("BillingProjection", p);
         assertEquals("PENDING_CONFIGURATION", p.get("billing_state").asText());
         assertNotEquals("ACTIVE", p.get("billing_state").asText());
         assertEquals("BLOCKED", p.at("/readiness/status").asText());
-        List<String> reasons = new ArrayList<>();
-        p.at("/readiness/reasons").forEach(r -> reasons.add(r.asText()));
-        assertEquals(List.of("BILLING_PROVIDER_NOT_CONFIGURED", "PAYMENT_PROVIDER_NOT_CONFIGURED"), reasons);
-        assertTrue(p.at("/billing_policy/billing_required").asBoolean());
+        assertEquals(List.of("PRICING_CONFIGURATION_MISSING", "BILLING_ACCOUNT_MISSING", "BILLING_PROVIDER_NOT_CONFIGURED",
+                "PAYMENT_PATH_NOT_READY"), blockers(p));
+        assertFalse(p.at("/readiness/facts/provider_ready").asBoolean());
+        assertFalse(p.at("/readiness/facts/payment_path_ready").asBoolean());
+        assertFalse(p.at("/readiness/facts/billing_configuration_complete").asBoolean());
+        assertTrue(p.at("/readiness/facts/classification_valid").asBoolean());
 
-        var usage = billing.recordUsage(key(), p.get("billing_subscription_id").asText(), scoped(Fixtures.usage(ACME_TENANT, "meter-1")), corr());
+        var usage = billing.recordUsage(ctx(), p.get("billing_subscription_id").asText(), scoped(Fixtures.usage(ACME_TENANT, "meter-1")));
         assertTrue(usage.body().get("billable").asBoolean(), "COMMERCIAL usage is billable");
     }
 
     @Test
     void ensureIsIdempotentAndConverges() {
-        String k = key();
-        var first = billing.ensure(k, scoped(Fixtures.zuriInternal()), corr());
-        var replay = billing.ensure(k, scoped(Fixtures.zuriInternal()), corr());
+        CallContext first = ctx();
+        var created = billing.ensure(first, scoped(Fixtures.zuriInternal()));
+        var replay = billing.ensure(first, scoped(Fixtures.zuriInternal()));
         assertEquals(201, replay.status());
         assertTrue(replay.replayed());
-        assertEquals(first.body().toString(), replay.body().toString());
+        assertEquals(created.body().toString(), replay.body().toString());
 
-        var again = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr());
+        var again = billing.ensure(ctx(), scoped(Fixtures.zuriInternal()));
         assertEquals(200, again.status(), "a new key for the same subscription converges on the projection");
-        assertEquals(first.body().get("billing_subscription_id"), again.body().get("billing_subscription_id"));
+        assertEquals(created.body().get("billing_subscription_id"), again.body().get("billing_subscription_id"));
 
-        BillingException reused = assertThrows(BillingException.class, () -> billing.ensure(k, scoped(Fixtures.zuriReclassifiedCommercial()), corr()));
+        BillingException reused = assertThrows(BillingException.class, () -> billing.ensure(first, scoped(Fixtures.zuriReclassifiedCommercial())));
         assertEquals("IDEMPOTENCY_KEY_REUSED", reused.code());
         assertEquals(1, store.events(zuri()).size(), "a replay publishes nothing");
     }
 
     @Test
-    void reclassificationUpdatesTheProjectionInPlace() {
-        JsonNode internal = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr()).body();
-        JsonNode commercial = billing.ensure(key(), scoped(Fixtures.zuriReclassifiedCommercial()), corr()).body();
+    void reclassificationFollowsTheAuthoritativeRevision() {
+        JsonNode internal = billing.ensure(ctx(), scoped(Fixtures.zuriInternal())).body();
+        JsonNode commercial = billing.ensure(ctx(), scoped(Fixtures.zuriReclassifiedCommercial())).body();
         conforms("BillingProjection", commercial);
         assertEquals(internal.get("billing_subscription_id"), commercial.get("billing_subscription_id"));
         assertEquals("COMMERCIAL", commercial.get("subscription_type").asText());
         assertEquals("BLOCKED", commercial.at("/readiness/status").asText());
+        assertEquals(5, commercial.get("authoritative_revision").asInt());
         assertEquals(2, commercial.get("version").asInt());
-        assertEquals("RECLASSIFICATION", commercial.at("/classification/classification_source").asText());
 
-        BillingException stale = assertThrows(BillingException.class, () -> billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr()));
-        assertEquals("STALE_CLASSIFICATION", stale.code(), "an out-of-order older classification never wins");
+        BillingException stale = assertThrows(BillingException.class, () -> billing.ensure(ctx(), scoped(Fixtures.zuriInternal())));
+        assertEquals("STALE_AUTHORITATIVE_REVISION", stale.code(), "an older revision never regresses the projection");
+        byte[] conflicting = scoped(Fixtures.json(new String(Fixtures.zuriReclassifiedCommercial(), StandardCharsets.UTF_8)
+                .replace("subcls_01k9zuricommercial", "subcls_01k9zuriother")));
+        assertEquals("CLASSIFICATION_REVISION_CONFLICT", assertThrows(BillingException.class,
+                () -> billing.ensure(ctx(), conflicting)).code());
+        assertEquals("COMMERCIAL", billing.get(zuri(), internal.get("billing_subscription_id").asText()).subscriptionType().name());
+    }
+
+    @Test
+    void lifecycleCommandsRespectRevisionsAndFinality() {
+        String id = billing.ensure(ctx(), scoped(Fixtures.zuriInternal())).body().get("billing_subscription_id").asText();
+        JsonNode suspended = billing.suspend(ctx(), id, cmd(ZURI_TENANT, 3, "governed review")).body();
+        conforms("BillingProjection", suspended);
+        assertEquals("SUSPENDED", suspended.get("billing_state").asText());
+        assertEquals("PROJECTION_SUSPENDED", blockers(suspended).getFirst());
+
+        assertEquals("STALE_AUTHORITATIVE_REVISION", assertThrows(BillingException.class,
+                () -> billing.resume(ctx(), id, cmd(ZURI_TENANT, 2, "late resume"))).code(), "a delayed resume never undoes a newer suspension");
+        JsonNode resumed = billing.resume(ctx(), id, cmd(ZURI_TENANT, 4, "review closed")).body();
+        assertEquals("ACTIVE", resumed.get("billing_state").asText());
+        assertEquals("READY", resumed.at("/readiness/status").asText());
+
+        JsonNode terminated = billing.terminate(ctx(), id, cmd(ZURI_TENANT, 6, "subscription ended")).body();
+        conforms("BillingProjection", terminated);
+        assertEquals("TERMINATED", terminated.get("billing_state").asText());
+        assertEquals("PROJECTION_TERMINATED", blockers(terminated).getFirst());
+        assertEquals("BILLING_PROJECTION_TERMINATED", assertThrows(BillingException.class,
+                () -> billing.resume(ctx(), id, cmd(ZURI_TENANT, 7, "resurrect"))).code(), "TERMINATED is final");
+        assertEquals("BILLING_PROJECTION_TERMINATED", assertThrows(BillingException.class,
+                () -> billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ZURI_TENANT, "late")))).code());
+        assertEquals("BILLING_PROJECTION_TERMINATED", assertThrows(BillingException.class,
+                () -> billing.ensure(ctx(), scoped(Fixtures.zuriReclassifiedCommercial()))).code());
+    }
+
+    @Test
+    void auditRecordsCarryTheEvidence() {
+        CallContext creating = ctx();
+        String id = billing.ensure(creating, scoped(Fixtures.zuriInternal())).body().get("billing_subscription_id").asText();
+        billing.ensure(ctx(), scoped(Fixtures.zuriReclassifiedCommercial()));
+        billing.suspend(ctx(), id, cmd(ZURI_TENANT, 6, "payment dispute"));
+        billing.terminate(ctx(), id, cmd(ZURI_TENANT, 7, "contract ended"));
+        assertThrows(BillingException.class, () -> billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ZURI_TENANT, "late"))));
+        List<AuditRecord> audit = store.audit(zuri());
+        assertEquals(List.of("billing_projection.created", "billing_projection.reclassified", "billing_projection.suspended",
+                "billing_projection.terminated"), audit.stream().map(AuditRecord::operation).toList());
+        AuditRecord created = audit.getFirst();
+        assertEquals("workload", created.principalType());
+        assertEquals("baobab-control-plane", created.workloadId());
+        assertEquals(creating.idempotencyKey(), created.idempotencyKey());
+        assertEquals(creating.correlationId(), created.correlationId());
+        assertEquals(id, created.resourceId());
+        assertNull(created.previousState());
+        assertEquals("INTERNAL/ACTIVE/READY", created.resultingState());
+        assertEquals(2L, created.authoritativeRevision());
+        assertEquals(1, created.policyVersion());
+        AuditRecord reclassified = audit.get(1);
+        assertEquals("INTERNAL/ACTIVE/READY", reclassified.previousState());
+        assertEquals("COMMERCIAL/PENDING_CONFIGURATION/BLOCKED", reclassified.resultingState());
+        assertTrue(reclassified.reason().contains("INTERNAL -> COMMERCIAL"), reclassified.reason());
+        assertEquals("payment dispute", audit.get(2).reason());
     }
 
     @Test
     void tenantsAreIsolated() {
-        String id = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr()).body().get("billing_subscription_id").asText();
+        String id = billing.ensure(ctx(), scoped(Fixtures.zuriInternal())).body().get("billing_subscription_id").asText();
         assertEquals("BILLING_PROJECTION_NOT_FOUND", assertThrows(BillingException.class, () -> billing.get(acme(), id)).code());
         assertEquals("BILLING_PROJECTION_NOT_FOUND", assertThrows(BillingException.class,
-                () -> billing.suspend(key(), id, scoped(Fixtures.command(ACME_TENANT, "x")), corr())).code());
+                () -> billing.suspend(ctx(), id, cmd(ACME_TENANT, 9, "x"))).code());
         assertEquals("BILLING_PROJECTION_NOT_FOUND", assertThrows(BillingException.class,
-                () -> billing.recordUsage(key(), id, scoped(Fixtures.usage(ACME_TENANT, "s")), corr())).code());
+                () -> billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ACME_TENANT, "s")))).code());
         assertEquals("BILLING_PROJECTION_NOT_FOUND", assertThrows(BillingException.class,
                 () -> billing.getForProductSubscription(acme(), "sub_01k9zuribeansxbt")).code());
         assertEquals(id, billing.get(zuri(), id).billingSubscriptionId());
-    }
-
-    @Test
-    void suspensionAndCancellationShowInReadiness() {
-        String id = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr()).body().get("billing_subscription_id").asText();
-        JsonNode suspended = billing.suspend(key(), id, scoped(Fixtures.command(ZURI_TENANT, "governed review")), corr()).body();
-        conforms("BillingProjection", suspended);
-        assertEquals("SUSPENDED", suspended.get("billing_state").asText());
-        assertEquals("PROJECTION_SUSPENDED", suspended.at("/readiness/reasons/0").asText());
-        JsonNode cancelled = billing.cancel(key(), id, scoped(Fixtures.command(ZURI_TENANT, "subscription ended")), corr()).body();
-        conforms("BillingProjection", cancelled);
-        assertEquals("CANCELLED", cancelled.get("billing_state").asText());
-        assertEquals("BILLING_PROJECTION_CANCELLED", assertThrows(BillingException.class,
-                () -> billing.recordUsage(key(), id, scoped(Fixtures.usage(ZURI_TENANT, "late")), corr())).code());
-        assertEquals("BILLING_PROJECTION_CANCELLED", assertThrows(BillingException.class,
-                () -> billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr())).code());
+        assertTrue(store.audit(acme()).isEmpty());
     }
 
     @Test
     void usageIsMeteredOncePerSource() {
-        String id = billing.ensure(key(), scoped(Fixtures.zuriInternal()), corr()).body().get("billing_subscription_id").asText();
-        var first = billing.recordUsage(key(), id, scoped(Fixtures.usage(ZURI_TENANT, "batch-7")), corr());
-        var duplicate = billing.recordUsage(key(), id, scoped(Fixtures.usage(ZURI_TENANT, "batch-7")), corr());
+        String id = billing.ensure(ctx(), scoped(Fixtures.zuriInternal())).body().get("billing_subscription_id").asText();
+        var first = billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ZURI_TENANT, "batch-7")));
+        var duplicate = billing.recordUsage(ctx(), id, scoped(Fixtures.usage(ZURI_TENANT, "batch-7")));
         assertEquals(201, first.status());
         assertEquals(200, duplicate.status());
         assertEquals(first.body().get("usage_record_id"), duplicate.body().get("usage_record_id"));
@@ -215,16 +275,16 @@ abstract class BillingScenarios {
 
     @Test
     void requestsOutsideTheContractAreRefused() {
-        BillingException evidence = assertThrows(BillingException.class, () -> billing.ensure(key(), scoped(Fixtures.json("""
-                {"tenant_id":"tn_01k9x","product_subscription_id":"sub_01k9x","product_id":"baobab-xbt","subscription_type":"INTERNAL",
+        BillingException evidence = assertThrows(BillingException.class, () -> billing.ensure(ctx(), scoped(Fixtures.json("""
+                {"tenant_id":"tn_01k9x","product_subscription_id":"sub_01k9x","authoritative_revision":1,"product_id":"baobab-xbt",
+                 "subscription_type":"INTERNAL",
                  "classification":{"classification_id":"subcls_01k9x","classification_source":"ADMISSION_DECISION",
                    "classification_reference":"adm_01k9x","classified_at":"2026-09-22T10:05:00Z"},
-                 "internal_eligibility":{"eligibility_status":"ELIGIBLE"}}""")), corr()));
+                 "internal_eligibility":{"eligibility_status":"ELIGIBLE"}}"""))));
         assertEquals("VALIDATION_FAILED", evidence.code(), "an ensure request can never carry eligibility evidence");
-        assertEquals("VALIDATION_FAILED", assertThrows(BillingException.class,
-                () -> billing.ensure(key(), Fixtures.json("[]"), corr())).code());
-        assertEquals("VALIDATION_FAILED", assertThrows(BillingException.class,
-                () -> billing.ensure(key(), Fixtures.json("{\"tenant_id\":\"not-a-tenant\"}"), corr())).code());
+        byte[] noRevision = Fixtures.json(new String(Fixtures.zuriInternal(), StandardCharsets.UTF_8).replace("\"authoritative_revision\":2,", ""));
+        assertEquals("VALIDATION_FAILED", assertThrows(BillingException.class, () -> billing.ensure(ctx(), noRevision)).code());
+        assertEquals("VALIDATION_FAILED", assertThrows(BillingException.class, () -> billing.ensure(ctx(), Fixtures.json("[]"))).code());
     }
 
     @Test
@@ -234,7 +294,7 @@ abstract class BillingScenarios {
         try (ExecutorService pool = Executors.newFixedThreadPool(n)) {
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < n; i++) {
-                futures.add(pool.submit(() -> ids.add(billing.ensure(key(), scoped(Fixtures.acmeCommercial()), corr())
+                futures.add(pool.submit(() -> ids.add(billing.ensure(ctx(), scoped(Fixtures.acmeCommercial()))
                         .body().get("billing_subscription_id").asText())));
             }
             for (Future<?> f : futures) {
@@ -243,5 +303,6 @@ abstract class BillingScenarios {
         }
         assertEquals(1, ids.size(), "concurrent ensures converge on one projection");
         assertEquals(1, store.events(acme()).size());
+        assertEquals(1, store.audit(acme()).size());
     }
 }

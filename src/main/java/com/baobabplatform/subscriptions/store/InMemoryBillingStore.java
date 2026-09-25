@@ -22,6 +22,7 @@ public final class InMemoryBillingStore implements BillingStore {
     private final Map<String, String> byProductSubscription = new HashMap<>();
     private final Map<String, UsageRecord> usageBySource = new LinkedHashMap<>();
     private final List<OutboxEvent> events = new ArrayList<>();
+    private final List<AuditRecord> audit = new ArrayList<>();
 
     private static String key(String... parts) {
         return String.join("\u0000", parts);
@@ -56,6 +57,16 @@ public final class InMemoryBillingStore implements BillingStore {
     }
 
     @Override
+    public List<AuditRecord> audit(String tenantId) {
+        lock.lock();
+        try {
+            return audit.stream().filter(a -> a.tenantId().equals(tenantId)).toList();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
     public void close() {
         // Nothing to release.
     }
@@ -66,6 +77,7 @@ public final class InMemoryBillingStore implements BillingStore {
         private final Map<String, String> newIndex = new HashMap<>();
         private final Map<String, UsageRecord> newUsage = new LinkedHashMap<>();
         private final List<OutboxEvent> newEvents = new ArrayList<>();
+        private final List<AuditRecord> newAudit = new ArrayList<>();
 
         @Override
         public Optional<IdempotencyRecord> idempotency(String tenantId, String operation, String key) {
@@ -137,12 +149,18 @@ public final class InMemoryBillingStore implements BillingStore {
             newEvents.add(event);
         }
 
+        @Override
+        public void appendAudit(AuditRecord record) {
+            newAudit.add(record);
+        }
+
         void commit() {
             idempotency.putAll(newIdempotency);
             projections.putAll(newProjections);
             byProductSubscription.putAll(newIndex);
             usageBySource.putAll(newUsage);
             events.addAll(newEvents);
+            audit.addAll(newAudit);
         }
     }
 }

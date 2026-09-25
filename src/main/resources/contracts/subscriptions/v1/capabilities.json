@@ -18,7 +18,8 @@
           "event_schemas": [
             "events.schema.json#/$defs/BillingSubscriptionCreated",
             "events.schema.json#/$defs/BillingSubscriptionSuspended",
-            "events.schema.json#/$defs/BillingSubscriptionCancelled"
+            "events.schema.json#/$defs/BillingSubscriptionResumed",
+            "events.schema.json#/$defs/BillingSubscriptionTerminated"
           ]
         }
       ],

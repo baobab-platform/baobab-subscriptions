@@ -15,6 +15,7 @@
         "billing_subscription_id",
         "product_subscription_id",
         "tenant_id",
+        "authoritative_revision",
         "subscription_type",
         "billing_required",
         "billing_state",
@@ -30,6 +31,10 @@
         },
         "tenant_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1
         },
         "subscription_type": {
           "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionType"
@@ -52,11 +57,13 @@
     "BillingSubscriptionSuspended": {
       "type": "object",
       "additionalProperties": false,
-      "description": "A billing projection was suspended by a governed command.",
+      "description": "The billing projection entered SUSPENDED by a governed instruction. A billing fact: it does not mean the ProductSubscription was suspended (ADR-SUB-0003 section 45).",
       "required": [
         "billing_subscription_id",
         "product_subscription_id",
         "tenant_id",
+        "authoritative_revision",
+        "billing_state",
         "suspended_at"
       ],
       "properties": {
@@ -69,21 +76,30 @@
         "tenant_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
         },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "billing_state": {
+          "$ref": "domain.schema.json#/$defs/billingState"
+        },
         "suspended_at": {
           "type": "string",
           "format": "date-time"
         }
       }
     },
-    "BillingSubscriptionCancelled": {
+    "BillingSubscriptionResumed": {
       "type": "object",
       "additionalProperties": false,
-      "description": "A billing projection was cancelled by a governed command. Final.",
+      "description": "The billing projection left SUSPENDED by a governed instruction (ADR-SUB-0003 section 35).",
       "required": [
         "billing_subscription_id",
         "product_subscription_id",
         "tenant_id",
-        "cancelled_at"
+        "authoritative_revision",
+        "billing_state",
+        "resumed_at"
       ],
       "properties": {
         "billing_subscription_id": {
@@ -95,7 +111,49 @@
         "tenant_id": {
           "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
         },
-        "cancelled_at": {
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "billing_state": {
+          "$ref": "domain.schema.json#/$defs/billingState"
+        },
+        "resumed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "BillingSubscriptionTerminated": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The billing projection reached TERMINATED, which is final (ADR-SUB-0003 section 10). It supersedes ADR-SUB-0001's billing-subscription.cancelled.",
+      "required": [
+        "billing_subscription_id",
+        "product_subscription_id",
+        "tenant_id",
+        "authoritative_revision",
+        "billing_state",
+        "terminated_at"
+      ],
+      "properties": {
+        "billing_subscription_id": {
+          "$ref": "domain.schema.json#/$defs/billingSubscriptionId"
+        },
+        "product_subscription_id": {
+          "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "tenant_id": {
+          "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "authoritative_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "billing_state": {
+          "$ref": "domain.schema.json#/$defs/billingState"
+        },
+        "terminated_at": {
           "type": "string",
           "format": "date-time"
         }
