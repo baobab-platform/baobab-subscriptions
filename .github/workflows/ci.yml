@@ -1,0 +1,48 @@
+name: Java CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Build and test (Java 21, PostgreSQL 17)
+    runs-on: ubuntu-24.04
+    # The Foundation Java gate builds with -DskipTests; this job runs the
+    # tests, including the PostgreSQL store scenarios and the check that the
+    # vendored contracts match the pinned Shared commit.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: baobab_subscriptions_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: jdbc:postgresql://localhost:5432/baobab_subscriptions_ci
+      TEST_DATABASE_USER: postgres
+      SHARED_CONTRACTS_DIR: ${{ github.workspace }}/.shared-contracts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read pinned baobab-platform/shared commit
+        id: pin
+        run: echo "commit=$(grep -m1 'commit:' contracts.lock.yaml | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Checkout baobab-platform/shared at the pinned commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: baobab-platform/shared
+          ref: ${{ steps.pin.outputs.commit }}
+          path: .shared-contracts
+      - uses: actions/setup-java@1aa87b638dacaa70f1c903fa9ec9cbd91058e2ff # v6.0.1+1 (main, 2026-09-10)
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: ./mvnw --batch-mode --no-transfer-progress verify

@@ -3,11 +3,15 @@ repository:
   lifecycle: experimental
 capabilities:
   - engine
+  - java
+  - container
 environment:
   baobab_dev:
     required: true
     profile: full
+package_managers:
+  java: maven
 artifacts:
-  container: false
+  container: true
 security:
   sast_provider: fallback

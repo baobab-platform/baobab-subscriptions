@@ -22,6 +22,6 @@ validation:
     - "development.docker"
     - "development.github_cli"
 notes:
-  - "Headless KillBill engine. `full` is the narrowest existing baobab-dev profile that covers Java 17 + Maven + a PostgreSQL client (KillBill also supports MySQL, but this org standardizes on Postgres per baobab-erp's precedent)."
+  - "Headless subscription billing engine (ADR-SUB-0001): a Baobab Billing API on Java 21 with a temporary provider; the Kill Bill adapter is not implemented yet. `full` is the narrowest existing baobab-dev profile with Java, Maven and a PostgreSQL client; the build requires Java 21 (enforced by the Maven enforcer). The engine's own persistence targets PostgreSQL 17."
   - "Codespaces/Dev Containers run as one of docker-compose.yml's services (workspace), with a local Postgres backing service brought up automatically alongside it."
-  - "This repo is still scaffolded (no KillBill integration code yet) — postCreateCommand intentionally runs only baobab-verify --contract. Add the real dependency-install/bootstrap step here once a pom.xml exists."
+  - "Build and test with the committed Maven wrapper: ./mvnw verify (set TEST_DATABASE_URL=jdbc:postgresql://... to run the PostgreSQL tests)."
