@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.baobab-platform.com/subscriptions/v1/events.schema.json",
+  "title": "Baobab Billing Event Payloads (ADR-SUB-0001)",
+  "description": "Payloads of the billing events baobab-subscriptions publishes inside the canonical envelope (tenant scope). Distinct from the Control Plane's product.subscription.* events: a billing projection is a different aggregate. Identifiers and state only.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {},
+  "$defs": {
+    "BillingSubscriptionCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A billing projection was created for a classified ProductSubscription.",
+      "required": [
+        "billing_subscription_id",
+        "product_subscription_id",
+        "tenant_id",
+        "subscription_type",
+        "billing_required",
+        "billing_state",
+        "simulated",
+        "created_at"
+      ],
+      "properties": {
+        "billing_subscription_id": {
+          "$ref": "domain.schema.json#/$defs/billingSubscriptionId"
+        },
+        "product_subscription_id": {
+          "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "tenant_id": {
+          "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "subscription_type": {
+          "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionType"
+        },
+        "billing_required": {
+          "type": "boolean"
+        },
+        "billing_state": {
+          "$ref": "domain.schema.json#/$defs/billingState"
+        },
+        "simulated": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "BillingSubscriptionSuspended": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A billing projection was suspended by a governed command.",
+      "required": [
+        "billing_subscription_id",
+        "product_subscription_id",
+        "tenant_id",
+        "suspended_at"
+      ],
+      "properties": {
+        "billing_subscription_id": {
+          "$ref": "domain.schema.json#/$defs/billingSubscriptionId"
+        },
+        "product_subscription_id": {
+          "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "tenant_id": {
+          "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "suspended_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "BillingSubscriptionCancelled": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A billing projection was cancelled by a governed command. Final.",
+      "required": [
+        "billing_subscription_id",
+        "product_subscription_id",
+        "tenant_id",
+        "cancelled_at"
+      ],
+      "properties": {
+        "billing_subscription_id": {
+          "$ref": "domain.schema.json#/$defs/billingSubscriptionId"
+        },
+        "product_subscription_id": {
+          "$ref": "../../product/v1/domain.schema.json#/$defs/subscriptionId"
+        },
+        "tenant_id": {
+          "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "cancelled_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "UsageRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A usage observation was metered.",
+      "required": [
+        "usage_record_id",
+        "billing_subscription_id",
+        "tenant_id",
+        "metric_key",
+        "quantity",
+        "unit",
+        "billable",
+        "occurred_at"
+      ],
+      "properties": {
+        "usage_record_id": {
+          "$ref": "domain.schema.json#/$defs/usageRecordId"
+        },
+        "billing_subscription_id": {
+          "$ref": "domain.schema.json#/$defs/billingSubscriptionId"
+        },
+        "tenant_id": {
+          "$ref": "../../control-plane/v1/domain.schema.json#/$defs/tenantId"
+        },
+        "metric_key": {
+          "$ref": "domain.schema.json#/$defs/usageMetricKey"
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "billable": {
+          "type": "boolean"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

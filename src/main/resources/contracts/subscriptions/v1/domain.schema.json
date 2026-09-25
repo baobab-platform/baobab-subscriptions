@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.baobab-platform.com/subscriptions/v1/domain.schema.json",
+  "title": "Baobab Subscription Billing Domain Definitions (ADR-SUB-0001, ADR-SHARED-011)",
+  "description": "Identifiers and vocabularies of the Baobab Billing API. Billing is a projection of a Control Plane ProductSubscription: it never redefines the subscription, its classification, its tenant or its entitlement.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {},
+  "$defs": {
+    "billingSubscriptionId": {
+      "type": "string",
+      "pattern": "^bsub_[a-z0-9]+$",
+      "minLength": 6,
+      "maxLength": 63,
+      "description": "baobab-subscriptions-minted opaque identifier of a billing projection. Never a Kill Bill identifier."
+    },
+    "usageRecordId": {
+      "type": "string",
+      "pattern": "^usage_[a-z0-9]+$",
+      "minLength": 7,
+      "maxLength": 63,
+      "description": "baobab-subscriptions-minted opaque identifier of one usage record."
+    },
+    "billingState": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "PENDING_CONFIGURATION",
+        "PENDING_PAYMENT_METHOD",
+        "SUSPENDED",
+        "CANCELLED"
+      ],
+      "description": "ACTIVE: billing is running as its policy requires (for INTERNAL: metering at zero charge). PENDING_CONFIGURATION / PENDING_PAYMENT_METHOD: billing is required but not yet possible. SUSPENDED and CANCELLED follow governed commands; CANCELLED is final."
+    },
+    "readinessStatus": {
+      "type": "string",
+      "enum": [
+        "READY",
+        "BLOCKED"
+      ]
+    },
+    "readinessReason": {
+      "type": "string",
+      "enum": [
+        "BILLING_PROVIDER_NOT_CONFIGURED",
+        "PAYMENT_PROVIDER_NOT_CONFIGURED",
+        "PAYMENT_METHOD_REQUIRED",
+        "USAGE_METERING_UNAVAILABLE",
+        "PROJECTION_SUSPENDED",
+        "PROJECTION_CANCELLED"
+      ],
+      "description": "Why a billing projection cannot currently do what its policy requires. Precise blockers are preferred to fake readiness."
+    },
+    "billingProviderKind": {
+      "type": "string",
+      "enum": [
+        "TEMPORARY",
+        "KILL_BILL"
+      ],
+      "description": "TEMPORARY: the development/integration provider (ADR-SUB-0001 section 6); always simulated. KILL_BILL: the real adapter (not yet implemented)."
+    },
+    "usageMetricKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 128,
+      "description": "Implementation-neutral usage metric, e.g. api.calls, storage.gb-hours, events.published."
+    }
+  }
+}
