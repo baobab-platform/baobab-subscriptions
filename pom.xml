@@ -43,6 +43,16 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- One SLF4J version everywhere: HikariCP and json-schema-validator
+           pull slf4j-api transitively, and dependency convergence requires
+           it to match slf4j-jdk14. -->
+      <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-bom</artifactId>
+        <version>${slf4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
