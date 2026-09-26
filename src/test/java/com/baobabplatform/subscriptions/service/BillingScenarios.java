@@ -56,7 +56,7 @@ abstract class BillingScenarios {
     }
 
     protected CallContext ctx() {
-        return new CallContext("baobab-control-plane", "service-account-cp", "idem-" + unique() + "-" + (++keys) + "-" + UUID.randomUUID(),
+        return new CallContext("baobab-cp-workload", "service-account-cp", "idem-" + unique() + "-" + (++keys) + "-" + UUID.randomUUID(),
                 UUID.randomUUID().toString());
     }
 
@@ -234,7 +234,7 @@ abstract class BillingScenarios {
                 "billing_projection.terminated"), audit.stream().map(AuditRecord::operation).toList());
         AuditRecord created = audit.getFirst();
         assertEquals("workload", created.principalType());
-        assertEquals("baobab-control-plane", created.workloadId());
+        assertEquals("baobab-cp-workload", created.workloadId());
         assertEquals(creating.idempotencyKey(), created.idempotencyKey());
         assertEquals(creating.correlationId(), created.correlationId());
         assertEquals(id, created.resourceId());

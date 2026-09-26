@@ -89,7 +89,7 @@ public record Config(
             problems.add("WORKLOAD_AUDIENCE must not be empty");
         }
         Set<String> clients = new TreeSet<>();
-        for (String client : env.getOrDefault("WORKLOAD_ALLOWED_CLIENTS", "baobab-control-plane").split(",")) {
+        for (String client : env.getOrDefault("WORKLOAD_ALLOWED_CLIENTS", "baobab-cp-workload").split(",")) {
             if (!client.isBlank()) {
                 clients.add(client.trim());
             }

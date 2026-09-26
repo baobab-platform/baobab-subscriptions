@@ -51,7 +51,7 @@ A Java 21 service on the JDK HTTP server. It uses Jackson, a JSON Schema validat
 
 **Guarantees:**
 
-- **Authentication.** Callers present Baobab workload tokens: the configured issuer, the audience `baobab-subscriptions`, `actor_type: workload`, an allowed client (`baobab-control-plane` by default) and the route's scope. Static secrets are not accepted.
+- **Authentication.** Callers present Baobab workload tokens: the configured issuer, the audience `baobab-subscriptions`, `actor_type: workload`, an allowed client (by default `baobab-cp-workload`, the Shared workload registry's identity for the Control Plane, separate from its browser and admin clients) and the route's scope. Static secrets are not accepted.
 - **Idempotency.** Every mutation needs an `Idempotency-Key`. A repeat with the same body replays the stored response, flagged `Idempotent-Replayed: true`. The same key with a different body is refused. Keys are scoped per tenant.
 - **Tenant isolation.** Every read and write is keyed by `tenant_id`. Another tenant's identifiers return 404.
 - **Lifecycle (ADR-SUB-0003).**
@@ -74,7 +74,7 @@ A Java 21 service on the JDK HTTP server. It uses Jackson, a JSON Schema validat
 | `BAOBAB_ENVIRONMENT` | (required) | `development`, `integration`, `staging` or `production`. The temporary provider is refused in `production`. |
 | `WORKLOAD_ISSUER`, `WORKLOAD_JWKS_URI` | (required) | The Baobab IAM realm. The JWKS URI must use https outside development. |
 | `WORKLOAD_AUDIENCE` | `baobab-subscriptions` | |
-| `WORKLOAD_ALLOWED_CLIENTS` | `baobab-control-plane` | Comma-separated. |
+| `WORKLOAD_ALLOWED_CLIENTS` | `baobab-cp-workload` | Comma-separated. |
 | `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` | in-memory | `jdbc:postgresql://…`. Required in staging and production. The schema is migrated at startup. |
 | `HTTP_PORT` | `8080` | |
 | `SHUTDOWN_GRACE_SECONDS` | `10` | In-flight requests finish on SIGTERM. |
