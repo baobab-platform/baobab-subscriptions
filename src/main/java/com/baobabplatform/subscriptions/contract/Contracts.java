@@ -2,12 +2,13 @@ package com.baobabplatform.subscriptions.contract;
 
 import com.baobabplatform.subscriptions.json.Json;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.Error;
+import com.networknt.schema.InputFormat;
+import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
-import com.networknt.schema.SchemaValidatorsConfig;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SchemaRegistryConfig;
+import com.networknt.schema.SpecificationVersion;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * pins (src/main/resources/contracts, byte-for-byte copies of the Shared commit
  * in contracts.lock.yaml). Schemas resolve by their canonical $id from the
  * classpath, so cross-file $refs work offline.
+ *
+ * <p>json-schema-validator 3.x reads JSON with Jackson 3 ({@code tools.jackson}),
+ * while this engine's own JSON stays on Jackson 2; an instance therefore
+ * reaches the validator as JSON text, never as a Jackson 2 tree.
  */
 public final class Contracts {
     public static final String BASE = "https://contracts.baobab-platform.com/";
@@ -25,12 +30,11 @@ public final class Contracts {
     public static final String ENVELOPE = "events/v1/envelope.schema.json";
     public static final String PROBLEM = "errors/v1/problem-details.schema.json";
 
-    private static final JsonSchemaFactory FACTORY = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012,
-            builder -> builder.schemaMappers(mappers -> mappers.mapPrefix(BASE, "classpath:contracts/")));
-    private static final SchemaValidatorsConfig CONFIG = SchemaValidatorsConfig.builder()
-            .formatAssertionsEnabled(true)
-            .build();
-    private static final Map<String, JsonSchema> SCHEMAS = new ConcurrentHashMap<>();
+    private static final SchemaRegistry REGISTRY = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12,
+            builder -> builder
+                    .schemaIdResolvers(resolvers -> resolvers.mapPrefix(BASE, "classpath:contracts/"))
+                    .schemaRegistryConfig(SchemaRegistryConfig.builder().formatAssertionsEnabled(true).build()));
+    private static final Map<String, Schema> SCHEMAS = new ConcurrentHashMap<>();
 
     private Contracts() {
     }
@@ -42,8 +46,8 @@ public final class Contracts {
 
     /** Problems with instance against ref (a path under contracts/, optionally with a fragment). Empty when valid. */
     public static List<String> problems(String ref, JsonNode instance) {
-        JsonSchema schema = SCHEMAS.computeIfAbsent(ref, r -> FACTORY.getSchema(SchemaLocation.of(BASE + r), CONFIG));
-        return schema.validate(instance).stream()
+        Schema schema = SCHEMAS.computeIfAbsent(ref, r -> REGISTRY.getSchema(SchemaLocation.of(BASE + r)));
+        return schema.validate(instance.toString(), InputFormat.JSON).stream()
                 .map(Contracts::describe)
                 .sorted()
                 .toList();
@@ -54,7 +58,7 @@ public final class Contracts {
         return problems(ref, Json.mapper().valueToTree(value));
     }
 
-    private static String describe(ValidationMessage message) {
+    private static String describe(Error message) {
         String at = message.getInstanceLocation() == null ? "" : message.getInstanceLocation().toString();
         return (at.isEmpty() ? "$" : at) + ": " + message.getMessage();
     }
