@@ -53,7 +53,7 @@ class HttpApiTest {
         key = new RSAKeyGenerator(2048).keyID("k1").generate();
         otherKey = new RSAKeyGenerator(2048).keyID("k1").generate();
         WorkloadAuthenticator auth = new WorkloadAuthenticator(ISSUER, new ImmutableJWKSet<>(new JWKSet(key.toPublicJWK())),
-                "baobab-subscriptions", Set.of("baobab-control-plane"));
+                "baobab-subscriptions", Set.of("baobab-cp-workload"));
         InMemoryBillingStore store = new InMemoryBillingStore();
         BillingService billing = new BillingService(store, new TemporaryProvider(), new Fixtures.RecordingPayments(),
                 BillingPolicies.load(), Fixtures.CLOCK);
@@ -72,7 +72,7 @@ class HttpApiTest {
         Instant now = Instant.now();
         JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder().issuer(ISSUER.toString()).subject("service-account-cp")
                 .audience("baobab-subscriptions").issueTime(Date.from(now)).expirationTime(Date.from(now.plusSeconds(300)))
-                .jwtID(UUID.randomUUID().toString()).claim("actor_type", "workload").claim("azp", "baobab-control-plane")
+                .jwtID(UUID.randomUUID().toString()).claim("actor_type", "workload").claim("azp", "baobab-cp-workload")
                 .claim("scope", "billing:manage billing:read usage:record");
         edit.accept(claims);
         SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("k1").type(JOSEObjectType.JWT).build(), claims.build());
@@ -138,6 +138,8 @@ class HttpApiTest {
         assertProblem(ensure(token(key, c -> c.expirationTime(Date.from(Instant.now().plusSeconds(3600)))), newKey(), body), 401, "AUTH_TOKEN_INVALID");
         assertProblem(ensure(token(key, c -> c.claim("actor_type", "human")), newKey(), body), 403, "AUTHORIZATION_DENIED");
         assertProblem(ensure(token(key, c -> c.claim("azp", "baobab-client-portal")), newKey(), body), 403, "AUTHORIZATION_DENIED");
+        // The Control Plane's browser/admin client is not its workload identity.
+        assertProblem(ensure(token(key, c -> c.claim("azp", "baobab-control-plane")), newKey(), body), 403, "AUTHORIZATION_DENIED");
         assertProblem(ensure(token(key, c -> c.claim("scope", "billing:read usage:record")), newKey(), body), 403, "AUTHORIZATION_DENIED");
     }
 

@@ -23,7 +23,7 @@ class ConfigTest {
         Config config = Config.fromEnvironment(base("development"));
         assertEquals(8080, config.httpPort());
         assertEquals("baobab-subscriptions", config.workloadAudience());
-        assertEquals(java.util.Set.of("baobab-control-plane"), config.allowedClients());
+        assertEquals(java.util.Set.of("baobab-cp-workload"), config.allowedClients());
         assertEquals(null, config.databaseUrl());
     }
 
