@@ -2,13 +2,15 @@ package com.baobabplatform.subscriptions.service;
 
 import com.baobabplatform.subscriptions.contract.Contracts;
 import com.baobabplatform.subscriptions.domain.AppliedPolicy;
+import com.baobabplatform.subscriptions.domain.BillingBlocker;
 import com.baobabplatform.subscriptions.domain.BillingState;
 import com.baobabplatform.subscriptions.domain.Classification;
 import com.baobabplatform.subscriptions.domain.Ids;
+import com.baobabplatform.subscriptions.domain.OperationalCondition;
 import com.baobabplatform.subscriptions.domain.Projection;
 import com.baobabplatform.subscriptions.domain.ProviderRef;
 import com.baobabplatform.subscriptions.domain.Readiness;
-import com.baobabplatform.subscriptions.domain.ReadinessReason;
+import com.baobabplatform.subscriptions.domain.ReadinessFacts;
 import com.baobabplatform.subscriptions.domain.SubscriptionType;
 import com.baobabplatform.subscriptions.domain.UsageRecord;
 import com.baobabplatform.subscriptions.json.Json;
@@ -16,6 +18,7 @@ import com.baobabplatform.subscriptions.payments.PaymentsPort;
 import com.baobabplatform.subscriptions.policy.BillingPolicies;
 import com.baobabplatform.subscriptions.policy.BillingPolicy;
 import com.baobabplatform.subscriptions.provider.BillingProvider;
+import com.baobabplatform.subscriptions.store.AuditRecord;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.ConflictException;
 import com.baobabplatform.subscriptions.store.IdempotencyRecord;
@@ -40,23 +43,31 @@ import java.util.UUID;
 import java.util.function.Function;
 
 /**
- * The Baobab Billing API (ADR-SUB-0001, Shared subscriptions/v1).
+ * The Baobab Billing API (ADR-SUB-0001, ADR-SUB-0003, ADR-SUB-0006,
+ * ADR-SUB-0016; Shared subscriptions/v1).
  *
- * <p>It applies the Control Plane's classification through Shared's billing
- * policy and never evaluates it. Readiness is honest: INTERNAL is ready with no
- * payment dependency, and billing that requires money is BLOCKED with precise
- * reasons while the provider is simulated. Every mutation is idempotent on
- * (tenant, operation, Idempotency-Key) and every read and write is scoped by
- * tenant. Zero-charge billing never touches the payments port.
+ * <p>The Control Plane's classification is applied through Shared's billing
+ * policy and never evaluated here. Every request and command carries the
+ * Control Plane's authoritative revision, so out-of-order delivery never
+ * regresses a projection. Readiness is reported as separate facts with
+ * machine-readable blockers: INTERNAL is ready with no provider or payment
+ * dependency, and billing that requires money names every missing piece while
+ * the provider is simulated. Every mutation is idempotent on (tenant,
+ * operation, Idempotency-Key), scoped by tenant, and audited in the same
+ * transaction. Zero-charge billing never touches the payments port.
  */
 public final class BillingService {
     public static final String EVENT_SOURCE = "urn:baobab-platform:service:baobab-subscriptions";
+    /** The billing-policy.yaml version applied (recorded in audit evidence). */
+    static final int POLICY_VERSION = 1;
     static final String CREATED = "com.baobab-platform.subscriptions.billing-subscription.created.v1";
     static final String SUSPENDED = "com.baobab-platform.subscriptions.billing-subscription.suspended.v1";
-    static final String CANCELLED = "com.baobab-platform.subscriptions.billing-subscription.cancelled.v1";
+    static final String RESUMED = "com.baobab-platform.subscriptions.billing-subscription.resumed.v1";
+    static final String TERMINATED = "com.baobab-platform.subscriptions.billing-subscription.terminated.v1";
     static final String USAGE_RECORDED = "com.baobab-platform.subscriptions.usage.recorded.v1";
     private static final Map<String, String> PAYLOAD_DEFS = Map.of(CREATED, "BillingSubscriptionCreated",
-            SUSPENDED, "BillingSubscriptionSuspended", CANCELLED, "BillingSubscriptionCancelled", USAGE_RECORDED, "UsageRecorded");
+            SUSPENDED, "BillingSubscriptionSuspended", RESUMED, "BillingSubscriptionResumed",
+            TERMINATED, "BillingSubscriptionTerminated", USAGE_RECORDED, "UsageRecorded");
     private static final int ATTEMPTS = 3;
 
     private final BillingStore store;
@@ -79,11 +90,11 @@ public final class BillingService {
 
     // --- Requests -----------------------------------------------------------
 
-    record EnsureRequest(String tenantId, String productSubscriptionId, String productId, String platformAccountId,
-            String legalEntityId, SubscriptionType subscriptionType, Classification classification) {
+    record EnsureRequest(String tenantId, String productSubscriptionId, long authoritativeRevision, String productId,
+            String platformAccountId, String legalEntityId, SubscriptionType subscriptionType, Classification classification) {
     }
 
-    record CommandRequest(String tenantId, String reason) {
+    record CommandRequest(String tenantId, long authoritativeRevision, String reason) {
     }
 
     record UsageRequest(String tenantId, String metricKey, BigDecimal quantity, String unit, Instant occurredAt,
@@ -128,58 +139,131 @@ public final class BillingService {
         return clock.instant().truncatedTo(ChronoUnit.MICROS);
     }
 
+    private static BillingException stale() {
+        return new BillingException(409, "STALE_AUTHORITATIVE_REVISION",
+                "the projection already reflects a newer Control Plane revision", false);
+    }
+
+    private static BillingException terminated() {
+        return new BillingException(409, "BILLING_PROJECTION_TERMINATED", "the billing projection is terminated", false);
+    }
+
+    // --- Readiness ----------------------------------------------------------
+
+    /**
+     * The lifecycle state and readiness the policy, provider and payment path
+     * allow (ADR-SUB-0003 sections 6-10, ADR-SUB-0006 sections 57-58). Only
+     * billing that requires money consults the provider's reality, and only a
+     * policy that may require payment consults the payments port.
+     */
+    private Projection settle(Projection p, BillingPolicy policy, BillingState lifecycle, long revision, long version, Instant at) {
+        boolean configured = true;
+        boolean providerReady = true;
+        boolean paymentReady = true;
+        List<BillingBlocker> blockers = new ArrayList<>();
+        if (policy.billingRequired()) {
+            // Pricing, currency and billing accounts are not modelled yet
+            // (ADR-SUB-0005, ADR-SUB-0011), so priced billing cannot be configured.
+            configured = false;
+            blockers.add(BillingBlocker.PRICING_CONFIGURATION_MISSING);
+            blockers.add(BillingBlocker.BILLING_ACCOUNT_MISSING);
+            providerReady = !p.provider().simulated();
+            if (!providerReady) {
+                blockers.add(BillingBlocker.BILLING_PROVIDER_NOT_CONFIGURED);
+            }
+        }
+        if (policy.mayRequirePayment()) {
+            paymentReady = payments.configured();
+            if (!paymentReady) {
+                blockers.add(BillingBlocker.PAYMENT_PATH_NOT_READY);
+            }
+        }
+        BillingState state = switch (lifecycle) {
+            case SUSPENDED -> {
+                blockers.addFirst(BillingBlocker.PROJECTION_SUSPENDED);
+                yield BillingState.SUSPENDED;
+            }
+            case TERMINATING, TERMINATED -> {
+                blockers.addFirst(BillingBlocker.PROJECTION_TERMINATED);
+                yield lifecycle;
+            }
+            default -> blockers.isEmpty() ? BillingState.ACTIVE : BillingState.PENDING_CONFIGURATION;
+        };
+        ReadinessFacts facts = new ReadinessFacts(true, true, true, configured, providerReady, paymentReady);
+        return p.with(state, Readiness.of(facts, blockers), revision, version, at);
+    }
+
     // --- Operations ---------------------------------------------------------
 
     /** Ensures the billing projection of one classified ProductSubscription. */
-    public Result ensure(String idempotencyKey, byte[] body, String correlationId) {
+    public Result ensure(CallContext ctx, byte[] body) {
         JsonNode node = parse(body);
         EnsureRequest req = decode(node, "EnsureBillingProjectionRequest", EnsureRequest.class);
         BillingPolicy policy = policies.forType(req.subscriptionType());
-        return idempotent(req.tenantId(), "ensure", idempotencyKey, node, tx -> {
+        return idempotent(req.tenantId(), "ensure", ctx, node, tx -> {
             var existing = tx.projectionForProductSubscription(req.tenantId(), req.productSubscriptionId());
             Instant at = now();
             if (existing.isEmpty()) {
                 String id = Ids.billingSubscriptionId();
-                Projection draft = new Projection(id, req.tenantId(), req.productSubscriptionId(), req.productId(),
-                        req.platformAccountId(), req.legalEntityId(), req.subscriptionType(), req.classification(),
-                        AppliedPolicy.of(policy), BillingState.PENDING_CONFIGURATION, Readiness.of(List.of()),
+                Projection draft = new Projection(id, req.tenantId(), req.productSubscriptionId(), req.authoritativeRevision(),
+                        req.productId(), req.platformAccountId(), req.legalEntityId(), req.subscriptionType(), req.classification(),
+                        AppliedPolicy.of(policy), BillingState.PROVISIONING, OperationalCondition.HEALTHY,
+                        Readiness.of(new ReadinessFacts(true, true, true, true, true, true), List.of()),
                         new ProviderRef(provider.kind(), provider.simulated(), null), 1, at, at);
+                // The temporary provider completes provisioning synchronously; a
+                // real provider would leave the projection PROVISIONING until it
+                // observes the outcome (ADR-SUB-0003 section 7).
                 String reference = provider.ensureSubscription(draft);
-                Projection created = settle(draft, policy, new ProviderRef(provider.kind(), provider.simulated(), reference), false, false);
+                Projection provisioned = new Projection(id, draft.tenantId(), draft.productSubscriptionId(), draft.authoritativeRevision(),
+                        draft.productId(), draft.platformAccountId(), draft.legalEntityId(), draft.subscriptionType(),
+                        draft.classification(), draft.billingPolicy(), draft.billingState(), draft.operationalCondition(),
+                        draft.readiness(), new ProviderRef(provider.kind(), provider.simulated(), reference), 1, at, at);
+                Projection created = settle(provisioned, policy, BillingState.ACTIVE, req.authoritativeRevision(), 1, at);
                 tx.insertProjection(created);
                 ObjectNode data = Json.mapper().createObjectNode()
                         .put("billing_subscription_id", id)
                         .put("product_subscription_id", created.productSubscriptionId())
                         .put("tenant_id", created.tenantId())
+                        .put("authoritative_revision", created.authoritativeRevision())
                         .put("subscription_type", created.subscriptionType().name())
                         .put("billing_required", created.billingPolicy().billingRequired())
                         .put("billing_state", created.billingState().name())
                         .put("simulated", created.provider().simulated())
                         .put("created_at", at.toString());
-                tx.appendEvent(event(CREATED, created, data, correlationId, idempotencyKey, at));
+                tx.appendEvent(event(CREATED, created, data, ctx, at));
+                tx.appendAudit(audit(ctx, created, "billing_projection.created", null, "classification "
+                        + req.classification().classificationId() + " (" + req.subscriptionType() + ")", at));
                 return new Result(201, Json.mapper().valueToTree(created), false);
             }
             Projection current = existing.get();
-            if (current.billingState() == BillingState.CANCELLED) {
-                throw new BillingException(409, "BILLING_PROJECTION_CANCELLED", "the billing projection is cancelled", false);
+            if (current.billingState().terminal()) {
+                throw terminated();
             }
             if (!current.productId().equals(req.productId())) {
                 throw new BillingException(409, "PRODUCT_MISMATCH", "the product subscription is billed for another product", false);
             }
-            if (req.classification().classifiedAt().isBefore(current.classification().classifiedAt())) {
-                throw new BillingException(409, "STALE_CLASSIFICATION",
-                        "the projection already records a newer classification", false);
+            if (req.authoritativeRevision() < current.authoritativeRevision()) {
+                throw stale();
             }
             if (sameTerms(current, req)) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
-            // A reclassification or a changed commercial context: update in place, never a new identity.
+            if (req.authoritativeRevision() == current.authoritativeRevision()) {
+                throw new BillingException(409, "CLASSIFICATION_REVISION_CONFLICT",
+                        "different terms were sent for a revision the projection already reflects", false);
+            }
+            // A reclassification or changed commercial context: updated in place, never a new identity.
             Projection changed = new Projection(current.billingSubscriptionId(), current.tenantId(), current.productSubscriptionId(),
-                    current.productId(), req.platformAccountId(), req.legalEntityId(), req.subscriptionType(), req.classification(),
-                    AppliedPolicy.of(policy), current.billingState(), current.readiness(), current.provider(),
-                    current.version() + 1, current.createdAt(), at);
-            Projection updated = settle(changed, policy, current.provider(), current.billingState() == BillingState.SUSPENDED, false);
+                    req.authoritativeRevision(), current.productId(), req.platformAccountId(), req.legalEntityId(), req.subscriptionType(),
+                    req.classification(), AppliedPolicy.of(policy), current.billingState(), current.operationalCondition(),
+                    current.readiness(), current.provider(), current.version(), current.createdAt(), current.updatedAt());
+            BillingState lifecycle = current.billingState() == BillingState.SUSPENDED ? BillingState.SUSPENDED : BillingState.ACTIVE;
+            Projection updated = settle(changed, policy, lifecycle, req.authoritativeRevision(), current.version() + 1, at);
             tx.updateProjection(updated, current.version());
+            tx.appendAudit(audit(ctx, updated, current.subscriptionType() == req.subscriptionType()
+                    ? "billing_projection.terms_changed" : "billing_projection.reclassified", current,
+                    current.subscriptionType() + " -> " + req.subscriptionType() + " by classification "
+                    + req.classification().classificationId(), at));
             return new Result(200, Json.mapper().valueToTree(updated), false);
         });
     }
@@ -190,101 +274,92 @@ public final class BillingService {
                 && Objects.equals(p.legalEntityId(), req.legalEntityId());
     }
 
-    /**
-     * The state and readiness the policy and provider allow. Only billing that
-     * requires money consults the provider's reality and the payments port.
-     */
-    private Projection settle(Projection p, BillingPolicy policy, ProviderRef providerRef, boolean suspended, boolean cancelled) {
-        BillingState state;
-        List<ReadinessReason> reasons = new ArrayList<>();
-        if (cancelled) {
-            state = BillingState.CANCELLED;
-            reasons.add(ReadinessReason.PROJECTION_CANCELLED);
-        } else {
-            List<ReadinessReason> blockers = new ArrayList<>();
-            if (policy.billingRequired()) {
-                if (providerRef.simulated()) {
-                    blockers.add(ReadinessReason.BILLING_PROVIDER_NOT_CONFIGURED);
-                }
-                if (policy.mayRequirePayment() && !payments.configured()) {
-                    blockers.add(ReadinessReason.PAYMENT_PROVIDER_NOT_CONFIGURED);
-                }
-            }
-            if (suspended) {
-                state = BillingState.SUSPENDED;
-                reasons.add(ReadinessReason.PROJECTION_SUSPENDED);
-                reasons.addAll(blockers);
-            } else {
-                state = blockers.isEmpty() ? BillingState.ACTIVE : BillingState.PENDING_CONFIGURATION;
-                reasons.addAll(blockers);
-            }
-        }
-        return new Projection(p.billingSubscriptionId(), p.tenantId(), p.productSubscriptionId(), p.productId(),
-                p.platformAccountId(), p.legalEntityId(), p.subscriptionType(), p.classification(), p.billingPolicy(), state,
-                Readiness.of(reasons), providerRef, p.version(), p.createdAt(), p.updatedAt());
-    }
-
-    /** Suspends a projection by a governed command. */
-    public Result suspend(String idempotencyKey, String billingSubscriptionId, byte[] body, String correlationId) {
+    /** A governed lifecycle command on an existing projection. */
+    private Result command(CallContext ctx, String operation, String billingSubscriptionId, byte[] body,
+            CommandHandler handler) {
         JsonNode node = parse(body);
         CommandRequest req = decode(node, "BillingProjectionCommand", CommandRequest.class);
-        return idempotent(req.tenantId(), "suspend:" + billingSubscriptionId, idempotencyKey, node, tx -> {
+        return idempotent(req.tenantId(), operation + ":" + billingSubscriptionId, ctx, node, tx -> {
             Projection current = tx.projection(req.tenantId(), billingSubscriptionId).orElseThrow(BillingException::notFound);
-            if (current.billingState() == BillingState.CANCELLED) {
-                throw new BillingException(409, "BILLING_PROJECTION_CANCELLED", "the billing projection is cancelled", false);
+            if (req.authoritativeRevision() < current.authoritativeRevision()) {
+                throw stale();
+            }
+            return handler.handle(tx, current, req, now());
+        });
+    }
+
+    @FunctionalInterface
+    private interface CommandHandler {
+        Result handle(BillingStore.Tx tx, Projection current, CommandRequest req, Instant at);
+    }
+
+    private Result transition(BillingStore.Tx tx, CallContext ctx, Projection current, CommandRequest req, Instant at,
+            BillingState lifecycle, String eventType, String timeField, String action) {
+        Projection next = settle(current, policies.forType(current.subscriptionType()), lifecycle,
+                Math.max(req.authoritativeRevision(), current.authoritativeRevision()), current.version() + 1, at);
+        tx.updateProjection(next, current.version());
+        tx.appendEvent(event(eventType, next, Json.mapper().createObjectNode()
+                .put("billing_subscription_id", next.billingSubscriptionId())
+                .put("product_subscription_id", next.productSubscriptionId())
+                .put("tenant_id", next.tenantId())
+                .put("authoritative_revision", next.authoritativeRevision())
+                .put("billing_state", next.billingState().name())
+                .put(timeField, at.toString()), ctx, at));
+        tx.appendAudit(audit(ctx, next, action, current, req.reason(), at));
+        return new Result(200, Json.mapper().valueToTree(next), false);
+    }
+
+    /** Suspends billing by a governed instruction. It does not revoke entitlement (ADR-SUB-0003 section 9). */
+    public Result suspend(CallContext ctx, String billingSubscriptionId, byte[] body) {
+        return command(ctx, "suspend", billingSubscriptionId, body, (tx, current, req, at) -> {
+            if (current.billingState().terminal()) {
+                throw terminated();
             }
             if (current.billingState() == BillingState.SUSPENDED) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
             provider.suspend(current);
-            Instant at = now();
-            Projection suspended = settle(bump(current, at), policies.forType(current.subscriptionType()), current.provider(), true, false);
-            tx.updateProjection(suspended, current.version());
-            tx.appendEvent(event(SUSPENDED, suspended, Json.mapper().createObjectNode()
-                    .put("billing_subscription_id", suspended.billingSubscriptionId())
-                    .put("product_subscription_id", suspended.productSubscriptionId())
-                    .put("tenant_id", suspended.tenantId())
-                    .put("suspended_at", at.toString()), correlationId, idempotencyKey, at));
-            return new Result(200, Json.mapper().valueToTree(suspended), false);
+            return transition(tx, ctx, current, req, at, BillingState.SUSPENDED, SUSPENDED, "suspended_at", "billing_projection.suspended");
         });
     }
 
-    /** Cancels a projection by a governed command. Cancellation is final. */
-    public Result cancel(String idempotencyKey, String billingSubscriptionId, byte[] body, String correlationId) {
-        JsonNode node = parse(body);
-        CommandRequest req = decode(node, "BillingProjectionCommand", CommandRequest.class);
-        return idempotent(req.tenantId(), "cancel:" + billingSubscriptionId, idempotencyKey, node, tx -> {
-            Projection current = tx.projection(req.tenantId(), billingSubscriptionId).orElseThrow(BillingException::notFound);
-            if (current.billingState() == BillingState.CANCELLED) {
+    /** Resumes a suspended projection; a late resume never resurrects a terminated one (ADR-SUB-0003 section 35). */
+    public Result resume(CallContext ctx, String billingSubscriptionId, byte[] body) {
+        return command(ctx, "resume", billingSubscriptionId, body, (tx, current, req, at) -> {
+            if (current.billingState().terminal()) {
+                throw terminated();
+            }
+            if (current.billingState() != BillingState.SUSPENDED) {
+                return new Result(200, Json.mapper().valueToTree(current), false);
+            }
+            return transition(tx, ctx, current, req, at, BillingState.ACTIVE, RESUMED, "resumed_at", "billing_projection.resumed");
+        });
+    }
+
+    /**
+     * Terminates a projection. TERMINATED is final (ADR-SUB-0003 section 10).
+     * The temporary provider completes synchronously; a real provider would
+     * hold the projection in TERMINATING until finalisation is observed.
+     */
+    public Result terminate(CallContext ctx, String billingSubscriptionId, byte[] body) {
+        return command(ctx, "terminate", billingSubscriptionId, body, (tx, current, req, at) -> {
+            if (current.billingState().terminal()) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
             provider.cancel(current);
-            Instant at = now();
-            Projection cancelled = settle(bump(current, at), policies.forType(current.subscriptionType()), current.provider(), false, true);
-            tx.updateProjection(cancelled, current.version());
-            tx.appendEvent(event(CANCELLED, cancelled, Json.mapper().createObjectNode()
-                    .put("billing_subscription_id", cancelled.billingSubscriptionId())
-                    .put("product_subscription_id", cancelled.productSubscriptionId())
-                    .put("tenant_id", cancelled.tenantId())
-                    .put("cancelled_at", at.toString()), correlationId, idempotencyKey, at));
-            return new Result(200, Json.mapper().valueToTree(cancelled), false);
+            return transition(tx, ctx, current, req, at, BillingState.TERMINATED, TERMINATED, "terminated_at",
+                    "billing_projection.terminated");
         });
     }
 
-    private static Projection bump(Projection p, Instant at) {
-        return new Projection(p.billingSubscriptionId(), p.tenantId(), p.productSubscriptionId(), p.productId(),
-                p.platformAccountId(), p.legalEntityId(), p.subscriptionType(), p.classification(), p.billingPolicy(),
-                p.billingState(), p.readiness(), p.provider(), p.version() + 1, p.createdAt(), at);
-    }
-
     /** Meters usage. Every type is metered; usage is billable only where the policy charges money. */
-    public Result recordUsage(String idempotencyKey, String billingSubscriptionId, byte[] body, String correlationId) {
+    public Result recordUsage(CallContext ctx, String billingSubscriptionId, byte[] body) {
         JsonNode node = parse(body);
         UsageRequest req = decode(node, "RecordUsageRequest", UsageRequest.class);
-        return idempotent(req.tenantId(), "usage:" + billingSubscriptionId, idempotencyKey, node, tx -> {
+        return idempotent(req.tenantId(), "usage:" + billingSubscriptionId, ctx, node, tx -> {
             Projection projection = tx.projection(req.tenantId(), billingSubscriptionId).orElseThrow(BillingException::notFound);
-            if (projection.billingState() == BillingState.CANCELLED) {
-                throw new BillingException(409, "BILLING_PROJECTION_CANCELLED", "the billing projection is cancelled", false);
+            if (projection.billingState().terminal()) {
+                throw terminated();
             }
             var prior = tx.usageBySource(req.tenantId(), billingSubscriptionId, req.metricKey(), req.sourceReference());
             if (prior.isPresent()) {
@@ -304,7 +379,7 @@ public final class BillingService {
                     .put("quantity", usage.quantity())
                     .put("unit", usage.unit())
                     .put("billable", billable)
-                    .put("occurred_at", usage.occurredAt().toString()), correlationId, idempotencyKey, at));
+                    .put("occurred_at", usage.occurredAt().toString()), ctx, at));
             return new Result(201, Json.mapper().valueToTree(usage), false);
         });
     }
@@ -320,15 +395,15 @@ public final class BillingService {
                 .orElseThrow(BillingException::notFound);
     }
 
-    // --- Idempotency and events --------------------------------------------
+    // --- Idempotency, audit and events --------------------------------------
 
-    private Result idempotent(String tenantId, String operation, String key, JsonNode request,
+    private Result idempotent(String tenantId, String operation, CallContext ctx, JsonNode request,
             Function<BillingStore.Tx, Result> work) {
         String requestHash = hash(request);
         for (int attempt = 1; ; attempt++) {
             try {
                 return store.transact(tx -> {
-                    var prior = tx.idempotency(tenantId, operation, key);
+                    var prior = tx.idempotency(tenantId, operation, ctx.idempotencyKey());
                     if (prior.isPresent()) {
                         if (!prior.get().requestHash().equals(requestHash)) {
                             throw new BillingException(409, "IDEMPOTENCY_KEY_REUSED",
@@ -337,7 +412,7 @@ public final class BillingService {
                         return new Result(prior.get().status(), readStored(prior.get().responseBody()), true);
                     }
                     Result result = work.apply(tx);
-                    tx.saveIdempotency(new IdempotencyRecord(tenantId, operation, key, requestHash, result.status(),
+                    tx.saveIdempotency(new IdempotencyRecord(tenantId, operation, ctx.idempotencyKey(), requestHash, result.status(),
                             result.body().toString()));
                     return result;
                 });
@@ -357,8 +432,19 @@ public final class BillingService {
         }
     }
 
-    private static OutboxEvent event(String type, Projection subject, ObjectNode data, String correlationId, String idempotencyKey,
+    private static String describe(Projection p) {
+        return p.subscriptionType() + "/" + p.billingState() + "/" + p.readiness().status();
+    }
+
+    private static AuditRecord audit(CallContext ctx, Projection resulting, String operation, Projection previous, String reason,
             Instant at) {
+        return new AuditRecord(Ids.uuidV7(), at, "workload", ctx.workloadId(), ctx.actorId(), resulting.tenantId(),
+                resulting.platformAccountId(), "billing-projection", resulting.billingSubscriptionId(), operation,
+                previous == null ? null : describe(previous), describe(resulting), reason, ctx.idempotencyKey(), ctx.correlationId(),
+                resulting.authoritativeRevision(), POLICY_VERSION, resulting.provider().providerReference(), "APPLIED");
+    }
+
+    private static OutboxEvent event(String type, Projection subject, ObjectNode data, CallContext ctx, Instant at) {
         UUID id = Ids.uuidV7();
         ObjectNode envelope = Json.mapper().createObjectNode()
                 .put("specversion", "1.0")
@@ -370,9 +456,9 @@ public final class BillingService {
                 .put("datacontenttype", "application/json")
                 .put("dataschema", Contracts.BASE + Contracts.def(Contracts.EVENTS, PAYLOAD_DEFS.get(type)))
                 .put("baobabscope", "tenant")
-                .put("correlationid", correlationId)
+                .put("correlationid", ctx.correlationId())
                 .put("tenantid", subject.tenantId())
-                .put("idempotencykey", idempotencyKey);
+                .put("idempotencykey", ctx.idempotencyKey());
         envelope.set("data", data);
         return new OutboxEvent(id, type, subject.tenantId(), subject.billingSubscriptionId(), envelope.toString(), at);
     }

@@ -126,7 +126,7 @@ An INTERNAL projection becomes billing-ready once:
 
 It requires no payment provider, payment method or capture.
 
-A COMMERCIAL projection reports `PENDING_CONFIGURATION`, with a precise readiness blocker such as `PAYMENT_PROVIDER_NOT_CONFIGURED`, until a real billing and payment path exists. It is never reported as financially ready by simulation.
+A COMMERCIAL projection reports `PENDING_CONFIGURATION`, with precise readiness blockers such as `BILLING_PROVIDER_NOT_CONFIGURED` and `PAYMENT_PATH_NOT_READY` (ADR-SUB-0006 §58), until a real billing and payment path exists. It is never reported as financially ready by simulation.
 
 ---
 
@@ -159,10 +159,10 @@ Baobab-owned persistence of the façade (projections, idempotency, usage) uses P
 - **Workload identity only.**
   - Control Plane → subscriptions, and subscriptions → payments, use Baobab workload identity with scoped tokens.
   - Static bearer secrets are not a supported production mechanism.
-- **Idempotency.** Every mutation (ensure projection, record usage, suspend, cancel) takes an `Idempotency-Key`. A retry never duplicates a projection or a usage record.
+- **Idempotency.** Every mutation (ensure projection, record usage, suspend, resume, terminate) takes an `Idempotency-Key`. A retry never duplicates a projection or a usage record.
 - **Tenant isolation.** Every record is scoped by `tenant_id`, and every read and write is checked against the trusted caller context. Another tenant's identifiers resolve to not-found.
 - **Events.** Only events with real meaning are published:
-  - `billing-subscription.created`, `.suspended` and `.cancelled`;
+  - `billing-subscription.created`, `.suspended`, `.resumed` and `.terminated` (ADR-SUB-0003 §10: `.terminated` superseded the original `.cancelled`);
   - `usage.recorded`.
 
   They never reuse `product.subscription.*`, which belongs to the Control Plane aggregate.

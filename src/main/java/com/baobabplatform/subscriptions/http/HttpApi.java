@@ -7,6 +7,7 @@ import com.baobabplatform.subscriptions.log.Log;
 import com.baobabplatform.subscriptions.provider.BillingProvider;
 import com.baobabplatform.subscriptions.service.BillingException;
 import com.baobabplatform.subscriptions.service.BillingService;
+import com.baobabplatform.subscriptions.service.CallContext;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -53,7 +54,7 @@ public final class HttpApi implements AutoCloseable {
 
     @FunctionalInterface
     private interface Handler {
-        Response handle(HttpExchange exchange, Matcher path, byte[] body, String correlationId);
+        Response handle(HttpExchange exchange, Matcher path, byte[] body, CallContext context);
     }
 
     private record Response(int status, Object body, boolean replayed) {
@@ -68,17 +69,19 @@ public final class HttpApi implements AutoCloseable {
         this.environment = environment;
         this.routes = List.of(
                 route("POST", "/v1/billing-projections", "billing:manage",
-                        (ex, m, body, corr) -> result(billing.ensure(idempotencyKey(ex), body, corr))),
+                        (ex, m, body, ctx) -> result(billing.ensure(ctx.withKey(idempotencyKey(ex)), body))),
                 route("GET", "/v1/tenants/{tenant_id}/billing-projections/{billing_subscription_id}", "billing:read",
-                        (ex, m, body, corr) -> new Response(200, billing.get(m.group(1), m.group(2)), false)),
+                        (ex, m, body, ctx) -> new Response(200, billing.get(m.group(1), m.group(2)), false)),
                 route("GET", "/v1/tenants/{tenant_id}/product-subscriptions/{product_subscription_id}/billing-projection", "billing:read",
-                        (ex, m, body, corr) -> new Response(200, billing.getForProductSubscription(m.group(1), m.group(2)), false)),
+                        (ex, m, body, ctx) -> new Response(200, billing.getForProductSubscription(m.group(1), m.group(2)), false)),
                 route("POST", "/v1/billing-projections/{billing_subscription_id}/suspend", "billing:manage",
-                        (ex, m, body, corr) -> result(billing.suspend(idempotencyKey(ex), m.group(1), body, corr))),
-                route("POST", "/v1/billing-projections/{billing_subscription_id}/cancel", "billing:manage",
-                        (ex, m, body, corr) -> result(billing.cancel(idempotencyKey(ex), m.group(1), body, corr))),
+                        (ex, m, body, ctx) -> result(billing.suspend(ctx.withKey(idempotencyKey(ex)), m.group(1), body))),
+                route("POST", "/v1/billing-projections/{billing_subscription_id}/resume", "billing:manage",
+                        (ex, m, body, ctx) -> result(billing.resume(ctx.withKey(idempotencyKey(ex)), m.group(1), body))),
+                route("POST", "/v1/billing-projections/{billing_subscription_id}/terminate", "billing:manage",
+                        (ex, m, body, ctx) -> result(billing.terminate(ctx.withKey(idempotencyKey(ex)), m.group(1), body))),
                 route("POST", "/v1/billing-projections/{billing_subscription_id}/usage", "usage:record",
-                        (ex, m, body, corr) -> result(billing.recordUsage(idempotencyKey(ex), m.group(1), body, corr))));
+                        (ex, m, body, ctx) -> result(billing.recordUsage(ctx.withKey(idempotencyKey(ex)), m.group(1), body))));
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         this.server.setExecutor(executor);
@@ -161,7 +164,8 @@ public final class HttpApi implements AutoCloseable {
                 WorkloadAuthenticator.Caller caller = auth.authenticate(exchange.getRequestHeaders().getFirst("Authorization"), matched.scope());
                 client = caller.clientId();
                 byte[] body = method.equals("POST") ? readBody(exchange) : new byte[0];
-                Response response = matched.handler().handle(exchange, matcher, body, correlationId);
+                CallContext context = new CallContext(caller.clientId(), caller.subject(), null, correlationId);
+                Response response = matched.handler().handle(exchange, matcher, body, context);
                 status = send(exchange, response.status(), response.body(), correlationId, response.replayed(), "application/json");
             }
         } catch (AuthException e) {

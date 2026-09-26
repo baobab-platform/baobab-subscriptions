@@ -1,6 +1,14 @@
 package com.baobabplatform.subscriptions.domain;
 
-/** subscriptions/v1 billingState. */
+/**
+ * The billing projection's business lifecycle (ADR-SUB-0003 section 5;
+ * subscriptions/v1 billingState). Infrastructure trouble is never a billing
+ * state: it is an {@link OperationalCondition}.
+ */
 public enum BillingState {
-    ACTIVE, PENDING_CONFIGURATION, PENDING_PAYMENT_METHOD, SUSPENDED, CANCELLED
+    PENDING_CONFIGURATION, PROVISIONING, ACTIVE, SUSPENDED, TERMINATING, TERMINATED;
+
+    public boolean terminal() {
+        return this == TERMINATED;
+    }
 }
