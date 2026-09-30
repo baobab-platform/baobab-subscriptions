@@ -26,7 +26,7 @@
     <main.class>com.baobabplatform.subscriptions.Application</main.class>
 
     <jackson.version>2.22.3</jackson.version>
-    <jackson3.version>3.2.2</jackson3.version>
+    <jackson3.version>3.2.3</jackson3.version>
     <json-schema-validator.version>3.0.7</json-schema-validator.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <postgresql.version>42.7.13</postgresql.version>
@@ -46,7 +46,8 @@
       </dependency>
       <!-- Jackson 3 (tools.jackson) reaches the build only through
            json-schema-validator. Pinned to a release without
-           CVE-2026-68497 (jackson-databind < 3.2.2). -->
+           CVE-2026-68497 (jackson-databind < 3.2.2) or CVE-2026-91776 and
+           CVE-2026-91777 (jackson-databind < 3.2.3). -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
