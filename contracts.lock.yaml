@@ -5,7 +5,7 @@ schema: baobab-contract-consumer-lock
 version: "1.0"
 source:
   repository: baobab-platform/shared
-  commit: ac2f0c24d22f6fab84c442c2c374ac209d4d1eae
+  commit: 3a8230ebbfe05ede65976363770f0867fa5eac45
 contracts:
   - contracts/admission/v1/application.schema.json
   - contracts/admission/v1/decision.schema.json
@@ -13,6 +13,7 @@ contracts:
   - contracts/control-plane/v1/domain.schema.json
   - contracts/errors/v1/problem-details.schema.json
   - contracts/events/v1/envelope.schema.json
+  - contracts/evidence/v1/domain.schema.json
   - contracts/organisation/v1/admission.schema.json
   - contracts/organisation/v1/domain.schema.json
   - contracts/organisation/v1/platform.schema.json
