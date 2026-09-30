@@ -1,0 +1,84 @@
+# Baobab Capability Provider Declaration: baobab-subscriptions
+#
+# Conforms to:
+#   baobab-platform/shared/contracts/capability/v1/provider-declaration.schema.json
+# Governing decision:
+#   baobab-platform/shared ADR-SHARED-017 (EA-02)
+#
+# Declares which canonical Baobab capabilities this engine's providers
+# implement. It references Shared's catalogue.yaml; it defines no
+# capability. It does not state certification (EA-09), activation,
+# bindings, grants, engine instances or health: the Control Plane owns
+# those.
+#
+# The three .baobab contracts are distinct:
+#   repository.yaml          Foundation technical traits
+#   environment.yaml         baobab-dev toolchain
+#   capability-provider.yaml canonical capability support  <- this file
+#
+# Census (EA-02A, 2026-09-30): only the deterministic temporary provider is
+# implemented (provider/TemporaryProvider.java). The Kill Bill provider
+# (ADR-SUB-0001) has no adapter yet, so it is not declared; declare it here,
+# with support and evidence, when its adapter lands. Every HTTP route maps
+# to one of the two canonical capabilities below, so there are no planned
+# candidates.
+#
+# Validate with a Shared checkout:
+#   python3 <shared>/scripts/capability_catalogue.py validate-declaration \
+#     .baobab/capability-provider.yaml --engine-id baobab-subscriptions --repository-root .
+
+schema:
+  name: baobab-capability-provider-declaration
+  version: "1.0"
+
+engine:
+  engine_id: baobab-subscriptions
+
+providers:
+  - provider_key: baobab-subscriptions.temporary-billing
+    name: Temporary billing provider (development/integration only)
+    provider_type: BAOBAB_ENGINE
+    implementation_key: temporary-billing
+    # Keeps no account, contacts nothing, never represents money movement.
+    simulated: true
+    production_permitted: false
+    provenance:
+      authority:
+        repository: baobab-platform/baobab-subscriptions
+        decision: ADR-SUB-0001
+    support:
+      # Ensure, read, suspend, resume and terminate a billing projection.
+      - capability_key: billing.subscription.manage
+        contract_versions: [1]
+        implementation_status: IMPLEMENTED
+        provenance:
+          authority:
+            repository: baobab-platform/baobab-subscriptions
+            decision: ADR-SUB-0003
+        implementation_evidence:
+          - type: source
+            path: src/main/java/com/baobabplatform/subscriptions/http/HttpApi.java
+          - type: source
+            path: src/main/java/com/baobabplatform/subscriptions/service/BillingService.java
+          - type: simulation
+            path: src/main/java/com/baobabplatform/subscriptions/provider/TemporaryProvider.java
+          - type: test
+            path: src/test/java/com/baobabplatform/subscriptions/service/BillingScenarios.java
+          - type: integration-test
+            path: src/test/java/com/baobabplatform/subscriptions/service/PostgresBillingTest.java
+      - capability_key: billing.usage.record
+        contract_versions: [1]
+        implementation_status: IMPLEMENTED
+        provenance:
+          authority:
+            repository: baobab-platform/baobab-subscriptions
+            decision: ADR-SUB-0004
+        implementation_evidence:
+          - type: source
+            path: src/main/java/com/baobabplatform/subscriptions/http/HttpApi.java
+          - type: source
+            path: src/main/java/com/baobabplatform/subscriptions/service/BillingService.java
+          - type: test
+            path: src/test/java/com/baobabplatform/subscriptions/service/BillingScenarios.java
+          - type: conformance-fixture
+            path: src/test/java/com/baobabplatform/subscriptions/contract/PinnedContractsTest.java
