@@ -22,6 +22,19 @@ LABEL org.opencontainers.image.title="baobab-subscriptions" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.vendor="Baobab Platform"
+# CVE-2026-84782 (HIGH): the pinned eclipse-temurin base ships openssl and
+# libssl3t64 3.0.13-0ubuntu3.15; Ubuntu fixed it in 3.0.13-0ubuntu3.16.
+# Upgrade both from the signed noble-security archive, and fail the build
+# unless the installed version is at least the fixed one. Remove once the
+# pinned base digest ships >= 3.0.13-0ubuntu3.16.
+RUN set -eu; apt-get update; \
+    apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl; \
+    for pkg in libssl3t64 openssl; do \
+      version=$(dpkg-query -W -f '${Version}' "$pkg"); \
+      dpkg --compare-versions "$version" ge 3.0.13-0ubuntu3.16 \
+        || { echo "$pkg $version is older than the fixed 3.0.13-0ubuntu3.16" >&2; exit 1; }; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 baobab \
  && useradd --system --uid 10001 --gid baobab --home-dir /app --shell /usr/sbin/nologin baobab
 WORKDIR /app
