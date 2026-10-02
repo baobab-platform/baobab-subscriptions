@@ -2,7 +2,7 @@
 # baobab-subscriptions: the Baobab Billing API (ADR-SUB-0001).
 # Base images are pinned by tag and digest; never latest.
 
-FROM maven:3.9.15-eclipse-temurin-26@sha256:029a8e2838ae68238ffb8be407cddbb3f07d4d839c60c6f26c619a69fd184531 AS build
+FROM maven:3-eclipse-temurin-24@sha256:a137a467ec89b5713d0be817b55bdba6b4d6ef16e3d05565a79bc08d8e775a1c AS build
 WORKDIR /src
 COPY pom.xml ./
 RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
