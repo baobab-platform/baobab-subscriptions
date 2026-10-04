@@ -40,6 +40,12 @@ jobs:
           repository: baobab-platform/shared
           ref: ${{ steps.pin.outputs.commit }}
           path: .shared-contracts
+          token: ${{ secrets.SHARED_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Verify exact Shared checkout
+        env:
+          EXPECTED_SHARED_COMMIT: ${{ steps.pin.outputs.commit }}
+        run: test "$(git -C .shared-contracts rev-parse HEAD)" = "$EXPECTED_SHARED_COMMIT"
       - uses: actions/setup-java@97c5a5e13aa773f277f72c1287dda3c789f1366c # v6.0.1+1 (main, 2026-09-10)
         with:
           distribution: temurin
