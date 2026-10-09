@@ -12,7 +12,7 @@ RUN mvn --batch-mode --no-transfer-progress -DskipTests package \
  && cp target/baobab-subscriptions-*.jar /app/baobab-subscriptions.jar \
  && cp -r target/lib /app/lib
 
-FROM eclipse-temurin:25-jre-noble@sha256:b573af9e331196fbc42e246da4df24df9b6c556c73e7efddfde0511f1c9508c5
+FROM eclipse-temurin:25-jre-noble@sha256:d9a39a23634650173f1e2bbc176227af9728587ecf0f4b62d53e9355cd7a19ab
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="baobab-subscriptions" \
