@@ -75,17 +75,46 @@ public final class BillingService {
     private final PaymentsPort payments;
     private final BillingPolicies policies;
     private final Clock clock;
+    private final InternalAuthorityGate internalAuthority;
 
     /** An outcome: the HTTP status and the contract body, and whether it replays an earlier request. */
     public record Result(int status, JsonNode body, boolean replayed) {
     }
 
     public BillingService(BillingStore store, BillingProvider provider, PaymentsPort payments, BillingPolicies policies, Clock clock) {
+        this(store, provider, payments, policies, clock, InternalAuthorityGate.unavailable());
+    }
+
+    public BillingService(BillingStore store, BillingProvider provider, PaymentsPort payments, BillingPolicies policies,
+            Clock clock, InternalAuthorityGate internalAuthority) {
         this.store = Objects.requireNonNull(store);
         this.provider = Objects.requireNonNull(provider);
         this.payments = Objects.requireNonNull(payments);
         this.policies = Objects.requireNonNull(policies);
         this.clock = Objects.requireNonNull(clock);
+        this.internalAuthority = Objects.requireNonNull(internalAuthority);
+    }
+
+    // Mandatory at each INTERNAL write, *before* the idempotent replay lookup,
+    // so a previously successful replay cannot reuse a revoked sponsorship.
+    private void requireInternalAuthority(String tenant, String productSubscriptionId, String classificationRef) {
+        boolean allowed;
+        try {
+            allowed = internalAuthority.currentlyAuthorised(tenant, productSubscriptionId, classificationRef);
+        } catch (RuntimeException failure) {
+            allowed = false;
+        }
+        if (!allowed) {
+            throw new BillingException(409, "INTERNAL_AUTHORITY_NOT_CURRENT",
+                    "a current Control Plane INTERNAL eligibility decision is required", true);
+        }
+    }
+
+    private void requireInternalAuthority(Projection p) {
+        if (p.subscriptionType() == SubscriptionType.INTERNAL) {
+            requireInternalAuthority(p.tenantId(), p.productSubscriptionId(),
+                    p.classification().classificationReference());
+        }
     }
 
     // --- Requests -----------------------------------------------------------
@@ -200,6 +229,12 @@ public final class BillingService {
         JsonNode node = parse(body);
         EnsureRequest req = decode(node, "EnsureBillingProjectionRequest", EnsureRequest.class);
         BillingPolicy policy = policies.forType(req.subscriptionType());
+        // A duplicate ensure request is not allowed to replay an old INTERNAL
+        // acceptance after revocation.
+        if (req.subscriptionType() == SubscriptionType.INTERNAL) {
+            requireInternalAuthority(req.tenantId(), req.productSubscriptionId(),
+                    req.classification().classificationReference());
+        }
         return idempotent(req.tenantId(), "ensure", ctx, node, tx -> {
             var existing = tx.projectionForProductSubscription(req.tenantId(), req.productSubscriptionId());
             Instant at = now();
@@ -325,7 +360,11 @@ public final class BillingService {
 
     /** Resumes a suspended projection; a late resume never resurrects a terminated one (ADR-SUB-0003 section 35). */
     public Result resume(CallContext ctx, String billingSubscriptionId, byte[] body) {
+        CommandRequest preview = decode(parse(body), "BillingProjectionCommand", CommandRequest.class);
+        Projection observed = get(preview.tenantId(), billingSubscriptionId);
+        requireInternalAuthority(observed);
         return command(ctx, "resume", billingSubscriptionId, body, (tx, current, req, at) -> {
+            requireInternalAuthority(current);
             if (current.billingState().terminal()) {
                 throw terminated();
             }
@@ -356,8 +395,11 @@ public final class BillingService {
     public Result recordUsage(CallContext ctx, String billingSubscriptionId, byte[] body) {
         JsonNode node = parse(body);
         UsageRequest req = decode(node, "RecordUsageRequest", UsageRequest.class);
+        // Check BEFORE the replay cache. Revocation invalidates prior success.
+        requireInternalAuthority(get(req.tenantId(), billingSubscriptionId));
         return idempotent(req.tenantId(), "usage:" + billingSubscriptionId, ctx, node, tx -> {
             Projection projection = tx.projection(req.tenantId(), billingSubscriptionId).orElseThrow(BillingException::notFound);
+            requireInternalAuthority(projection);
             if (projection.billingState().terminal()) {
                 throw terminated();
             }
