@@ -55,7 +55,7 @@ final class FoundingEventInboxTest {
         String pass = System.getenv("TEST_DATABASE_PASSWORD");
         try (PostgresBillingStore first = new PostgresBillingStore(url, user, pass)) {
             assertFalse(first.receive(body, "baobab-cp").replayed());
-            assertTrue(first.receive(body).replayed());
+            assertTrue(first.receive(body, "baobab-cp").replayed());
             // Valid JSON with different raw bytes under the SAME event ID:
             // the durable inbox must reject it rather than acknowledging.
             byte[] altered = (new String(body, java.nio.charset.StandardCharsets.UTF_8) + " ")
