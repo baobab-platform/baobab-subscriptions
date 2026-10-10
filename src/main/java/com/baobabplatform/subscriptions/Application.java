@@ -10,10 +10,14 @@ import com.baobabplatform.subscriptions.policy.BillingPolicies;
 import com.baobabplatform.subscriptions.provider.BillingProvider;
 import com.baobabplatform.subscriptions.provider.TemporaryProvider;
 import com.baobabplatform.subscriptions.service.BillingService;
+import com.baobabplatform.subscriptions.service.CpInternalAuthorityGate;
+import com.baobabplatform.subscriptions.service.InternalAuthorityGate;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.InMemoryBillingStore;
 import com.baobabplatform.subscriptions.store.PostgresBillingStore;
 import java.time.Clock;
+import java.net.URI;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -37,7 +41,23 @@ public final class Application {
         BillingStore store = config.databaseUrl() == null ? new InMemoryBillingStore()
                 : new PostgresBillingStore(config.databaseUrl(), config.databaseUser(), config.databasePassword());
         BillingProvider provider = new TemporaryProvider();
-        BillingService billing = new BillingService(store, provider, PaymentsPort.notConfigured(), policies, Clock.systemUTC());
+        // Only a controlled nonproduction rehearsal can opt in. A missing
+        // workload credential or unavailable CP never restores historical
+        // INTERNAL permission; the default always denies.
+        InternalAuthorityGate internalAuthority = InternalAuthorityGate.unavailable();
+        if ("true".equals(System.getenv("PEO_INTERNAL_AUTHORITY_ENABLED"))) {
+            if (config.environment() == Config.Environment.PRODUCTION) {
+                throw new ConfigException("PEO INTERNAL current-authority integration is not production-certified");
+            }
+            String endpoint = System.getenv("PEO_CP_INTERNAL_AUTHORITY_BASE_URL");
+            String credentialFile = System.getenv("PEO_CP_INTERNAL_AUTHORITY_TOKEN_FILE");
+            if (endpoint == null || endpoint.isBlank() || credentialFile == null || credentialFile.isBlank()) {
+                throw new ConfigException("PEO INTERNAL authority requires a CP endpoint and an IAM-managed workload token file");
+            }
+            internalAuthority = CpInternalAuthorityGate.create(URI.create(endpoint), Path.of(credentialFile));
+        }
+        BillingService billing = new BillingService(store, provider, PaymentsPort.notConfigured(),
+                policies, Clock.systemUTC(), internalAuthority);
         WorkloadAuthenticator auth = WorkloadAuthenticator.remote(config.workloadIssuer(), config.workloadJwksUri(),
                 config.workloadAudience(), config.allowedClients());
         String environment = config.environment().name().toLowerCase(Locale.ROOT);
