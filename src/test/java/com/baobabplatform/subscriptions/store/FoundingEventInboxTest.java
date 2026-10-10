@@ -15,6 +15,10 @@ final class FoundingEventInboxTest {
     private static byte[] event(UUID id, UUID aggregate, String status) throws Exception {
         ObjectNode root = Json.mapper().createObjectNode();
         root.put("specversion", "1.0");
+        root.put("datacontenttype", "application/json");
+        root.put("baobabscope", "platform");
+        root.put("time", java.time.Instant.now().toString());
+        root.put("correlationid", UUID.randomUUID().toString());
         root.put("id", id.toString());
         root.put("source", "urn:baobab-platform:service:baobab-cp");
         root.put("subject", "founding-governance/" + aggregate);
