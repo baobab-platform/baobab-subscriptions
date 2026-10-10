@@ -28,7 +28,7 @@ import java.util.UUID;
 /** PostgreSQL persistence through a HikariCP pool. Schema changes are versioned SQL applied at startup. */
 public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
     private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
-            "db/V3__founding_lifecycle_inbox.sql"};
+            "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
