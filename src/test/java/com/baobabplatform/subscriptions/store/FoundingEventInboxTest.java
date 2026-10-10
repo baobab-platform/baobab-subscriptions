@@ -52,8 +52,10 @@ final class FoundingEventInboxTest {
         try (PostgresBillingStore first = new PostgresBillingStore(url, user, pass)) {
             assertFalse(first.receive(body).replayed());
             assertTrue(first.receive(body).replayed());
-            byte[] altered = body.clone();
-            altered[altered.length - 1] = (byte) ' ';
+            // Valid JSON with different raw bytes under the SAME event ID:
+            // the durable inbox must reject it rather than acknowledging.
+            byte[] altered = (new String(body, java.nio.charset.StandardCharsets.UTF_8) + " ")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
             assertThrows(IllegalArgumentException.class,
                     () -> first.receive(altered),
                     "changed event replay should never be silently accepted");
