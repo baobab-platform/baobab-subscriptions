@@ -52,7 +52,10 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
     }
 
     @Override
-    public FoundingEventInbox.Receipt receive(byte[] rawEvent) {
+    public FoundingEventInbox.Receipt receive(byte[] rawEvent, String authenticatedClientId) {
+        if (authenticatedClientId == null || !authenticatedClientId.matches("[A-Za-z0-9._:-]{3,200}")) {
+            throw new IllegalArgumentException("invalid authenticated workload client ID");
+        }
         if (rawEvent == null || rawEvent.length == 0 || rawEvent.length > 64 * 1024) {
             throw new IllegalArgumentException("invalid founding event size");
         }
@@ -73,22 +76,23 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
             int inserted;
             try (PreparedStatement q = c.prepareStatement(
                     "INSERT INTO billing.founding_event_inbox "
-                    + "(event_id,event_type,event_source,aggregate_id,payload_sha256,envelope) "
-                    + "VALUES(?,?,?,?::uuid,?,?::jsonb) ON CONFLICT (event_id) DO NOTHING")) {
+                    + "(event_id,event_type,event_source,received_by_client_id,aggregate_id,payload_sha256,envelope) "
+                    + "VALUES(?,?,?,?,?::uuid,?,?::jsonb) ON CONFLICT (event_id) DO NOTHING")) {
                 q.setObject(1, eventId);
                 q.setString(2, dataType);
                 q.setString(3, source);
-                q.setString(4, dataId);
-                q.setString(5, sha256);
-                q.setString(6, new String(rawEvent, StandardCharsets.UTF_8));
+                q.setString(4, authenticatedClientId);
+                q.setString(5, dataId);
+                q.setString(6, sha256);
+                q.setString(7, new String(rawEvent, StandardCharsets.UTF_8));
                 inserted = q.executeUpdate();
             }
             if (inserted == 0) {
                 try (PreparedStatement q = c.prepareStatement(
-                        "SELECT payload_sha256 FROM billing.founding_event_inbox WHERE event_id = ?")) {
+                        "SELECT payload_sha256,received_by_client_id FROM billing.founding_event_inbox WHERE event_id = ?")) {
                     q.setObject(1, eventId);
                     try (ResultSet rs = q.executeQuery()) {
-                        if (!rs.next() || !sha256.equals(rs.getString(1))) {
+                        if (!rs.next() || !sha256.equals(rs.getString(1)) || !authenticatedClientId.equals(rs.getString(2))) {
                             throw new IllegalArgumentException("event ID replayed with changed payload");
                         }
                     }
