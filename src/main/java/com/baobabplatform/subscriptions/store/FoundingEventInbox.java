@@ -3,6 +3,8 @@ package com.baobabplatform.subscriptions.store;
 import com.baobabplatform.subscriptions.json.Json;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
 /**
@@ -28,8 +30,18 @@ public interface FoundingEventInbox {
     static UUID verify(JsonNode event) {
         if (!"1.0".equals(event.path("specversion").asText())
                 || !"urn:baobab-platform:service:baobab-cp".equals(event.path("source").asText())
-                || !event.path("data").isObject()) {
+                || !"application/json".equals(event.path("datacontenttype").asText())
+                || !"platform".equals(event.path("baobabscope").asText())
+                || !event.path("time").isTextual()
+                || !event.path("correlationid").isTextual()
+                || !event.path("data").isObject() || event.path("data").size() != 3) {
             throw new IllegalArgumentException("invalid founding CloudEvent source or envelope");
+        }
+        try {
+            Instant.parse(event.path("time").asText());
+            UUID.fromString(event.path("correlationid").asText());
+        } catch (DateTimeParseException | IllegalArgumentException invalid) {
+            throw new IllegalArgumentException("invalid CloudEvent time or correlation identity", invalid);
         }
         String type = event.path("type").asText();
         String prefix = "com.baobab-platform.control-plane.";
