@@ -9,6 +9,7 @@ import com.baobabplatform.subscriptions.service.BillingException;
 import com.baobabplatform.subscriptions.service.BillingService;
 import com.baobabplatform.subscriptions.service.CallContext;
 import com.baobabplatform.subscriptions.store.BillingStore;
+import com.baobabplatform.subscriptions.store.FoundingEventInbox;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,12 +64,17 @@ public final class HttpApi implements AutoCloseable {
 
     public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
             String environment) throws IOException {
+        this(port, billing, auth, store, provider, environment, null, null);
+    }
+
+    public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
+            String environment, FoundingEventInbox inbox, String trustedCpClient) throws IOException {
         this.billing = billing;
         this.auth = auth;
         this.store = store;
         this.provider = provider;
         this.environment = environment;
-        this.routes = List.of(
+        List<Route> configuredRoutes = new ArrayList<>(List.of(
                 route("POST", "/v1/billing-projections", "billing:manage",
                         (ex, m, body, ctx) -> result(billing.ensure(ctx.withKey(idempotencyKey(ex)), body))),
                 route("GET", "/v1/tenants/{tenant_id}/billing-projections/{billing_subscription_id}", "billing:read",
@@ -82,6 +89,29 @@ public final class HttpApi implements AutoCloseable {
                         (ex, m, body, ctx) -> result(billing.terminate(ctx.withKey(idempotencyKey(ex)), m.group(1), body))),
                 route("POST", "/v1/billing-projections/{billing_subscription_id}/usage", "usage:record",
                         (ex, m, body, ctx) -> result(billing.recordUsage(ctx.withKey(idempotencyKey(ex)), m.group(1), body))));
+        // PEO-02E: this route records immutable canonical invalidation events.
+        // It does not mutate classification, bill, provider, payment or tenant.
+        if (inbox != null && trustedCpClient != null && !trustedCpClient.isBlank()
+                && !"production".equals(environment)) {
+            configuredRoutes.add(route("POST", "/internal/v1/founding-lifecycle-events", "billing:observe",
+                    (ex, m, body, ctx) -> {
+                        if (!trustedCpClient.equals(ctx.workloadId())) {
+                            throw new BillingException(403, "UNTRUSTED_FOUNDING_PRODUCER",
+                                    "founding lifecycle receipts require Control Plane workload", false);
+                        }
+                        try {
+                            FoundingEventInbox.Receipt receipt = inbox.receive(body);
+                            return new Response(receipt.replayed() ? 200 : 202,
+                                    Map.of("event_id", receipt.eventId().toString(),
+                                            "durably_received", true, "replayed", receipt.replayed()),
+                                    receipt.replayed());
+                        } catch (IllegalArgumentException invalid) {
+                            throw new BillingException(422, "INVALID_FOUNDING_EVENT",
+                                    "the canonical founding lifecycle event is invalid", false);
+                        }
+                    }));
+        }
+        this.routes = List.copyOf(configuredRoutes);
         this.executor = Executors.newVirtualThreadPerTaskExecutor();
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         this.server.setExecutor(executor);
