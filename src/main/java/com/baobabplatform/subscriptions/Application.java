@@ -13,6 +13,7 @@ import com.baobabplatform.subscriptions.service.BillingService;
 import com.baobabplatform.subscriptions.service.CpInternalAuthorityGate;
 import com.baobabplatform.subscriptions.service.InternalAuthorityGate;
 import com.baobabplatform.subscriptions.store.BillingStore;
+import com.baobabplatform.subscriptions.store.FoundingEventInbox;
 import com.baobabplatform.subscriptions.store.InMemoryBillingStore;
 import com.baobabplatform.subscriptions.store.PostgresBillingStore;
 import java.time.Clock;
@@ -61,7 +62,21 @@ public final class Application {
         WorkloadAuthenticator auth = WorkloadAuthenticator.remote(config.workloadIssuer(), config.workloadJwksUri(),
                 config.workloadAudience(), config.allowedClients());
         String environment = config.environment().name().toLowerCase(Locale.ROOT);
-        HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment);
+        FoundingEventInbox foundingInbox = null;
+        String controlPlaneClient = null;
+        if ("true".equals(System.getenv("PEO_FOUNDING_EVENT_RECEIVER_ENABLED"))) {
+            if (config.environment() == Config.Environment.PRODUCTION
+                    || !(store instanceof PostgresBillingStore)) {
+                throw new ConfigException("PEO founding lifecycle receiver requires nonproduction PostgreSQL");
+            }
+            controlPlaneClient = System.getenv("PEO_CP_EVENT_CLIENT_ID");
+            if (controlPlaneClient == null || controlPlaneClient.isBlank()) {
+                throw new ConfigException("PEO founding event receiver requires verified CP workload client ID");
+            }
+            foundingInbox = (PostgresBillingStore) store;
+        }
+        HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment,
+                foundingInbox, controlPlaneClient);
 
         CountDownLatch stopped = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
