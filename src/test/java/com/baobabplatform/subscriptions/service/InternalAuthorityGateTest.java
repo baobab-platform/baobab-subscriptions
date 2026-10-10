@@ -8,6 +8,7 @@ import com.baobabplatform.subscriptions.payments.PaymentsPort;
 import com.baobabplatform.subscriptions.policy.BillingPolicies;
 import com.baobabplatform.subscriptions.provider.TemporaryProvider;
 import com.baobabplatform.subscriptions.store.InMemoryBillingStore;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** A historical INTERNAL projection is never an ongoing sponsorship grant. */
@@ -18,7 +19,7 @@ final class InternalAuthorityGateTest {
                 new TemporaryProvider(), PaymentsPort.notConfigured(),
                 BillingPolicies.load(), Fixtures.CLOCK);
         var ctx = new CallContext("baobab-cp-workload", "test-workload",
-                "test-only-idempotency-key-001", "0190a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b");
+                "test-only-idempotency-key-001", UUID.randomUUID().toString());
         BillingException denied = assertThrows(BillingException.class,
                 () -> service.ensure(ctx, Fixtures.syntheticInternal()));
         assertEquals("INTERNAL_AUTHORITY_NOT_CURRENT", denied.code());
@@ -33,7 +34,7 @@ final class InternalAuthorityGateTest {
                 BillingPolicies.load(), Fixtures.CLOCK,
                 (tenant, subscription, reference) -> allowed.get());
         var ctx = new CallContext("baobab-cp-workload", "test-workload",
-                "test-only-idempotency-key-002", "0190a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b");
+                "test-only-idempotency-key-002", UUID.randomUUID().toString());
         var created = service.ensure(ctx, Fixtures.syntheticInternal()).body();
         String id = created.get("billing_subscription_id").asText();
         allowed.set(false);
@@ -55,7 +56,7 @@ final class InternalAuthorityGateTest {
                     throw new IllegalStateException("CP unavailable");
                 });
         var ctx = new CallContext("baobab-cp-workload", "test-workload",
-                "test-only-idempotency-key-003", "0190a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b");
+                "test-only-idempotency-key-003", UUID.randomUUID().toString());
         assertEquals("INTERNAL_AUTHORITY_NOT_CURRENT", assertThrows(BillingException.class,
                 () -> service.ensure(ctx, Fixtures.syntheticInternal())).code());
     }
