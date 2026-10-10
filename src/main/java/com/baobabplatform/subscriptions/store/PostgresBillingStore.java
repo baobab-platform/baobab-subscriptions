@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,8 +26,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** PostgreSQL persistence through a HikariCP pool. Schema changes are versioned SQL applied at startup. */
-public final class PostgresBillingStore implements BillingStore {
-    private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql"};
+public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
+    private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
+            "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -44,6 +49,60 @@ public final class PostgresBillingStore implements BillingStore {
         config.setConnectionTimeout(5_000);
         this.pool = new HikariDataSource(config);
         migrate();
+    }
+
+    @Override
+    public FoundingEventInbox.Receipt receive(byte[] rawEvent, String authenticatedClientId) {
+        if (authenticatedClientId == null || !authenticatedClientId.matches("[A-Za-z0-9._:-]{3,200}")) {
+            throw new IllegalArgumentException("invalid authenticated workload client ID");
+        }
+        if (rawEvent == null || rawEvent.length == 0 || rawEvent.length > 64 * 1024) {
+            throw new IllegalArgumentException("invalid founding event size");
+        }
+        JsonNode event = FoundingEventInbox.parse(rawEvent);
+        UUID eventId = FoundingEventInbox.verify(event);
+        String dataType = event.path("type").asText();
+        String source = event.path("source").asText();
+        String dataId = dataType.contains("founding-sponsorship.")
+                ? event.path("data").path("sponsorship_id").asText()
+                : event.path("data").path("deferral_id").asText();
+        final String sha256;
+        try {
+            sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(rawEvent));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 unavailable", impossible);
+        }
+        try (Connection c = pool.getConnection()) {
+            int inserted;
+            try (PreparedStatement q = c.prepareStatement(
+                    "INSERT INTO billing.founding_event_inbox "
+                    + "(event_id,event_type,event_source,received_by_client_id,aggregate_id,payload_sha256,envelope) "
+                    + "VALUES(?,?,?,?,?::uuid,?,?::jsonb) ON CONFLICT (event_id) DO NOTHING")) {
+                q.setObject(1, eventId);
+                q.setString(2, dataType);
+                q.setString(3, source);
+                q.setString(4, authenticatedClientId);
+                q.setString(5, dataId);
+                q.setString(6, sha256);
+                q.setString(7, new String(rawEvent, StandardCharsets.UTF_8));
+                inserted = q.executeUpdate();
+            }
+            if (inserted == 0) {
+                try (PreparedStatement q = c.prepareStatement(
+                        "SELECT payload_sha256,received_by_client_id FROM billing.founding_event_inbox WHERE event_id = ?")) {
+                    q.setObject(1, eventId);
+                    try (ResultSet rs = q.executeQuery()) {
+                        if (!rs.next() || !sha256.equals(rs.getString(1)) || !authenticatedClientId.equals(rs.getString(2))) {
+                            throw new IllegalArgumentException("event ID replayed with changed payload");
+                        }
+                    }
+                }
+            }
+            c.commit();
+            return new FoundingEventInbox.Receipt(eventId, inserted == 0);
+        } catch (SQLException e) {
+            throw translate(e);
+        }
     }
 
     private void migrate() {

@@ -52,7 +52,8 @@ abstract class BillingScenarios {
     void setUp() {
         store = newStore();
         payments = new Fixtures.RecordingPayments();
-        billing = new BillingService(store, new TemporaryProvider(), payments, BillingPolicies.load(), Fixtures.CLOCK);
+        billing = new BillingService(store, new TemporaryProvider(), payments, BillingPolicies.load(), Fixtures.CLOCK,
+                (tenant, subscription, reference) -> true);
     }
 
     protected CallContext ctx() {

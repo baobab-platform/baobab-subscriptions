@@ -56,7 +56,7 @@ class HttpApiTest {
                 "baobab-subscriptions", Set.of("baobab-cp-workload"));
         InMemoryBillingStore store = new InMemoryBillingStore();
         BillingService billing = new BillingService(store, new TemporaryProvider(), new Fixtures.RecordingPayments(),
-                BillingPolicies.load(), Fixtures.CLOCK);
+                BillingPolicies.load(), Fixtures.CLOCK, (tenant, subscription, reference) -> true);
         api = new HttpApi(0, billing, auth, store, new TemporaryProvider(), "development");
         api.start();
         client = HttpClient.newHttpClient();
