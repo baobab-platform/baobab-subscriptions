@@ -88,7 +88,7 @@ public final class HttpApi implements AutoCloseable {
                 route("POST", "/v1/billing-projections/{billing_subscription_id}/terminate", "billing:manage",
                         (ex, m, body, ctx) -> result(billing.terminate(ctx.withKey(idempotencyKey(ex)), m.group(1), body))),
                 route("POST", "/v1/billing-projections/{billing_subscription_id}/usage", "usage:record",
-                        (ex, m, body, ctx) -> result(billing.recordUsage(ctx.withKey(idempotencyKey(ex)), m.group(1), body))));
+                        (ex, m, body, ctx) -> result(billing.recordUsage(ctx.withKey(idempotencyKey(ex)), m.group(1), body)))));
         // PEO-02E: this route records immutable canonical invalidation events.
         // It does not mutate classification, bill, provider, payment or tenant.
         if (inbox != null && trustedCpClient != null && !trustedCpClient.isBlank()
