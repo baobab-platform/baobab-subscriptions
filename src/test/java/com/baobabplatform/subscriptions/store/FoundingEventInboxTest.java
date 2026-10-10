@@ -56,6 +56,10 @@ final class FoundingEventInboxTest {
         try (PostgresBillingStore first = new PostgresBillingStore(url, user, pass)) {
             assertFalse(first.receive(body, "baobab-cp").replayed());
             assertTrue(first.receive(body, "baobab-cp").replayed());
+            assertThrows(IllegalArgumentException.class,
+                    () -> first.receive(body, "untrusted-other-engine"),
+                    "the same event must not be acknowledged under another authenticated workload");
+
             // Valid JSON with different raw bytes under the SAME event ID:
             // the durable inbox must reject it rather than acknowledging.
             byte[] altered = (new String(body, java.nio.charset.StandardCharsets.UTF_8) + " ")
