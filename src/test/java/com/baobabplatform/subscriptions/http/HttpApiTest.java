@@ -164,7 +164,7 @@ class HttpApiTest {
         String id = projection.get("billing_subscription_id").asText();
         HttpResponse<String> read = call("GET", "/v1/tenants/" + Fixtures.ACME_TENANT + "/billing-projections/" + id, bearer, null, null, Map.of());
         assertEquals(200, read.statusCode());
-        assertProblem(call("GET", "/v1/tenants/" + Fixtures.ZURI_TENANT + "/billing-projections/" + id, bearer, null, null, Map.of()),
+        assertProblem(call("GET", "/v1/tenants/" + Fixtures.SYNTHETIC_TENANT + "/billing-projections/" + id, bearer, null, null, Map.of()),
                 404, "BILLING_PROJECTION_NOT_FOUND");
         HttpResponse<String> byProduct = call("GET", "/v1/tenants/" + Fixtures.ACME_TENANT + "/product-subscriptions/sub_01k9acmexbt/billing-projection",
                 bearer, null, null, Map.of());
