@@ -24,7 +24,7 @@ public interface FoundingEventInbox {
             "founding-documentary-deferral.revoked", "DeferralRevoked:REVOKED",
             "founding-documentary-deferral.expired", "DeferralExpired:EXPIRED");
 
-    Receipt receive(byte[] rawEvent);
+    Receipt receive(byte[] rawEvent, String authenticatedClientId);
 
     /** Reject corrupted/misattributed events BEFORE any durable receipt. */
     static UUID verify(JsonNode event) {
