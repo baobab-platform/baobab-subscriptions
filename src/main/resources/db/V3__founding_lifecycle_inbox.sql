@@ -4,7 +4,6 @@ CREATE TABLE billing.founding_event_inbox (
   event_id uuid PRIMARY KEY,
   event_type text NOT NULL,
   event_source text NOT NULL,
-  received_by_client_id text NOT NULL CHECK (length(btrim(received_by_client_id)) BETWEEN 3 AND 200),
   aggregate_id uuid NOT NULL,
   payload_sha256 char(64) NOT NULL CHECK(payload_sha256 ~ '^[0-9a-f]{64}$'),
   envelope jsonb NOT NULL,
