@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json",
+  "title": "Current INTERNAL subscription authority assessment",
+  "description": "Non-cacheable CP PDP decision for authenticated subscriptions workload. Neither an event nor previous classification is a continuing grant; a TRUE decision is bound to one tenant, subscription and classification and a very short expiry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tenant_id",
+    "product_subscription_id",
+    "classification_reference",
+    "eligible",
+    "evaluated_at",
+    "expires_at",
+    "policy_reference"
+  ],
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "pattern": "^tn_[a-z0-9]+$"
+    },
+    "product_subscription_id": {
+      "type": "string",
+      "pattern": "^sub_[a-z0-9]+$"
+    },
+    "classification_reference": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "eligible": {
+      "type": "boolean"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "policy_reference": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 250
+    }
+  }
+}
