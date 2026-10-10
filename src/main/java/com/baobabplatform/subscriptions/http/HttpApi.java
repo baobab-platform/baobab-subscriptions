@@ -100,7 +100,7 @@ public final class HttpApi implements AutoCloseable {
                                     "founding lifecycle receipts require Control Plane workload", false);
                         }
                         try {
-                            FoundingEventInbox.Receipt receipt = inbox.receive(body);
+                            FoundingEventInbox.Receipt receipt = inbox.receive(body, ctx.workloadId());
                             return new Response(receipt.replayed() ? 200 : 202,
                                     Map.of("event_id", receipt.eventId().toString(),
                                             "durably_received", true, "replayed", receipt.replayed()),
