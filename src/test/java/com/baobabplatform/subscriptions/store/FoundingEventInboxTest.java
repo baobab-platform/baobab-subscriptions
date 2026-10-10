@@ -54,18 +54,18 @@ final class FoundingEventInboxTest {
         String user = System.getenv("TEST_DATABASE_USER");
         String pass = System.getenv("TEST_DATABASE_PASSWORD");
         try (PostgresBillingStore first = new PostgresBillingStore(url, user, pass)) {
-            assertFalse(first.receive(body).replayed());
+            assertFalse(first.receive(body, "baobab-cp").replayed());
             assertTrue(first.receive(body).replayed());
             // Valid JSON with different raw bytes under the SAME event ID:
             // the durable inbox must reject it rather than acknowledging.
             byte[] altered = (new String(body, java.nio.charset.StandardCharsets.UTF_8) + " ")
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8);
             assertThrows(IllegalArgumentException.class,
-                    () -> first.receive(altered),
+                    () -> first.receive(altered, "baobab-cp"),
                     "changed event replay should never be silently accepted");
         }
         try (PostgresBillingStore restarted = new PostgresBillingStore(url, user, pass)) {
-            assertTrue(restarted.receive(body).replayed(),
+            assertTrue(restarted.receive(body, "baobab-cp").replayed(),
                     "received event is durable across service restarts");
         }
     }
