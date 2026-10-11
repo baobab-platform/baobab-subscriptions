@@ -211,6 +211,13 @@ public final class HttpApi implements AutoCloseable {
                         && !"integration".equals(environment);
                 boolean cpManaged = "billing:manage".equals(matched.scope())
                         || "usage:record".equals(matched.scope());
+                if (method.equals("POST") && cpManaged
+                        && !"development".equals(environment)
+                        && !"integration".equals(environment)
+                        && !"staging".equals(environment)) {
+                    throw new BillingException(503, "BILLING_EXECUTION_NOT_CERTIFIED",
+                            "production billing provider and legal-responsibility acceptance are pending", true);
+                }
                 if (method.equals("POST") && protectedRuntime && cpManaged
                         && (commandProducerClient == null || commandProducerClient.isBlank()
                         || !commandProducerClient.equals(caller.clientId()))) {
