@@ -75,8 +75,16 @@ public final class Application {
             }
             foundingInbox = (PostgresBillingStore) store;
         }
+        // A billing:manage or usage:record bearer scope is not CP authority.
+        // Do not guess a default principal from allowedClients; the exact
+        // staging issuer/client binding must be supplied by IAM governance.
+        String commandClient = System.getenv("BAOBAB_CP_BILLING_COMMAND_CLIENT_ID");
+        if (config.environment() == Config.Environment.STAGING
+                && (commandClient == null || commandClient.isBlank())) {
+            throw new ConfigException("staging billing commands require the approved CP workload client ID");
+        }
         HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment,
-                foundingInbox, controlPlaneClient);
+                foundingInbox, controlPlaneClient, commandClient);
 
         CountDownLatch stopped = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
