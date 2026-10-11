@@ -199,4 +199,67 @@ class HttpApiTest {
         assertProblem(call("DELETE", "/v1/billing-projections", token(), null, null, Map.of()), 405, "METHOD_NOT_ALLOWED");
         assertProblem(call("POST", "/v1/billing-projections", token(), newKey(), new byte[70 * 1024], Map.of()), 413, "PAYLOAD_TOO_LARGE");
     }
+    @Test
+    void protectedBillingCommandsRequireExactCpWorkloadNotMerelyManageScope() throws Exception {
+        var localStore = new InMemoryBillingStore();
+        BillingService governed = new BillingService(localStore, new TemporaryProvider(),
+                new Fixtures.RecordingPayments(), BillingPolicies.load(), Fixtures.CLOCK,
+                (tenant, subscription, reference) -> true);
+        WorkloadAuthenticator both = new WorkloadAuthenticator(ISSUER,
+                new ImmutableJWKSet<>(new JWKSet(key.toPublicJWK())),
+                "baobab-subscriptions", Set.of("baobab-cp-workload", "baobab-trade-workload"));
+        try (HttpApi protectedApi = new HttpApi(0, governed, both, localStore,
+                new TemporaryProvider(), "staging", null, null, "baobab-cp-workload")) {
+            protectedApi.start();
+            String trade = token(key, claims -> claims.claim("azp", "baobab-trade-workload"));
+            String cp = token();
+            var uri = URI.create("http://127.0.0.1:" + protectedApi.port() + "/v1/billing-projections");
+            byte[] body = Fixtures.acmeCommercial();
+            String keyForReplay = newKey();
+            for (int attempt = 0; attempt < 2; attempt++) {
+                HttpRequest rejected = HttpRequest.newBuilder(uri)
+                        .header("Authorization", "Bearer " + trade)
+                        .header("Idempotency-Key", keyForReplay)
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+                HttpResponse<String> result = client.send(rejected, HttpResponse.BodyHandlers.ofString());
+                assertProblem(result, 403, "CP_COMMAND_AUTHORITY_REQUIRED");
+            }
+            HttpRequest approved = HttpRequest.newBuilder(uri)
+                    .header("Authorization", "Bearer " + cp)
+                    .header("Idempotency-Key", keyForReplay)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+            HttpResponse<String> result = client.send(approved, HttpResponse.BodyHandlers.ofString());
+            assertEquals(201, result.statusCode(), result.body());
+            // An unauthorised workload may not replay even a valid CP result.
+            HttpRequest replay = HttpRequest.newBuilder(uri)
+                    .header("Authorization", "Bearer " + trade)
+                    .header("Idempotency-Key", keyForReplay)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+            assertProblem(client.send(replay, HttpResponse.BodyHandlers.ofString()),
+                    403, "CP_COMMAND_AUTHORITY_REQUIRED");
+        }
+        try (HttpApi unconfigured = new HttpApi(0, governed, both, localStore,
+                new TemporaryProvider(), "staging", null, null, null)) {
+            unconfigured.start();
+            var uri = URI.create("http://127.0.0.1:" + unconfigured.port() + "/v1/billing-projections");
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .header("Authorization", "Bearer " + token())
+                    .header("Idempotency-Key", newKey())
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(Fixtures.acmeCommercial())).build();
+            assertProblem(client.send(request, HttpResponse.BodyHandlers.ofString()),
+                    403, "CP_COMMAND_AUTHORITY_REQUIRED");
+        }
+        try (HttpApi production = new HttpApi(0, governed, both, localStore,
+                new TemporaryProvider(), "production", null, null, "baobab-cp-workload")) {
+            production.start();
+            var uri = URI.create("http://127.0.0.1:" + production.port() + "/v1/billing-projections");
+            HttpRequest request = HttpRequest.newBuilder(uri)
+                    .header("Authorization", "Bearer " + token())
+                    .header("Idempotency-Key", newKey())
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(Fixtures.acmeCommercial())).build();
+            assertProblem(client.send(request, HttpResponse.BodyHandlers.ofString()),
+                    503, "BILLING_EXECUTION_NOT_CERTIFIED");
+        }
+    }
+
 }
