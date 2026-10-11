@@ -83,6 +83,13 @@ public final class Application {
                 && (commandClient == null || commandClient.isBlank())) {
             throw new ConfigException("staging billing commands require the approved CP workload client ID");
         }
+        // The approved CP producer must also be accepted by the JWT issuer
+        // allowlist; otherwise a purported healthy staging deployment can
+        // never receive any valid CP billing command.
+        if (config.environment() == Config.Environment.STAGING
+                && !config.allowedClients().contains(commandClient)) {
+            throw new ConfigException("staging CP billing command client must be in WORKLOAD_ALLOWED_CLIENTS");
+        }
         HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment,
                 foundingInbox, controlPlaneClient, commandClient);
 
