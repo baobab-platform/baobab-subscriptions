@@ -49,6 +49,8 @@ public final class HttpApi implements AutoCloseable {
     private final BillingStore store;
     private final BillingProvider provider;
     private final String environment;
+    /** Exact Control Plane workload client approved to send billing commands in protected runtimes. */
+    private final String commandProducerClient;
     private final List<Route> routes;
 
     private record Route(String method, String template, Pattern pattern, String scope, Handler handler) {
@@ -69,11 +71,17 @@ public final class HttpApi implements AutoCloseable {
 
     public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
             String environment, FoundingEventInbox inbox, String trustedCpClient) throws IOException {
+        this(port, billing, auth, store, provider, environment, inbox, trustedCpClient, null);
+    }
+
+    public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
+            String environment, FoundingEventInbox inbox, String trustedCpClient, String commandProducerClient) throws IOException {
         this.billing = billing;
         this.auth = auth;
         this.store = store;
         this.provider = provider;
         this.environment = environment;
+        this.commandProducerClient = commandProducerClient;
         List<Route> configuredRoutes = new ArrayList<>(List.of(
                 route("POST", "/v1/billing-projections", "billing:manage",
                         (ex, m, body, ctx) -> result(billing.ensure(ctx.withKey(idempotencyKey(ex)), body))),
@@ -193,6 +201,22 @@ public final class HttpApi implements AutoCloseable {
                 template = matched.template();
                 WorkloadAuthenticator.Caller caller = auth.authenticate(exchange.getRequestHeaders().getFirst("Authorization"), matched.scope());
                 client = caller.clientId();
+                // LA-05F2: billing:manage and usage:record scopes do not let
+                // arbitrary engines impersonate CP's subscription revision,
+                // financial responsibility, or tenant. This restriction runs
+                // BEFORE body parsing, idempotency replay and any provider IO.
+                // Non-CP usage producers need a separately accepted and
+                // operation-scoped workload/tenant source binding.
+                boolean protectedRuntime = !"development".equals(environment)
+                        && !"integration".equals(environment);
+                boolean cpManaged = "billing:manage".equals(matched.scope())
+                        || "usage:record".equals(matched.scope());
+                if (method.equals("POST") && protectedRuntime && cpManaged
+                        && (commandProducerClient == null || commandProducerClient.isBlank()
+                        || !commandProducerClient.equals(caller.clientId()))) {
+                    throw new BillingException(403, "CP_COMMAND_AUTHORITY_REQUIRED",
+                            "protected billing commands require the exact Control Plane workload client", false);
+                }
                 byte[] body = method.equals("POST") ? readBody(exchange) : new byte[0];
                 CallContext context = new CallContext(caller.clientId(), caller.subject(), null, correlationId);
                 Response response = matched.handler().handle(exchange, matcher, body, context);
