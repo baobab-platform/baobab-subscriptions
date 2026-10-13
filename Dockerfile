@@ -7,10 +7,14 @@ WORKDIR /src
 COPY pom.xml ./
 RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
 COPY src ./src
+COPY src/test/resources/authority-contract-cases.json /authority-contract-cases.json
 RUN mvn --batch-mode --no-transfer-progress -DskipTests package \
  && mkdir -p /app \
  && cp target/baobab-subscriptions-*.jar /app/baobab-subscriptions.jar \
- && cp -r target/lib /app/lib
+ && cp -r target/lib /app/lib \
+ && cd /app \
+ && java -jar baobab-subscriptions.jar contract-self-test \
+ && java -jar baobab-subscriptions.jar contract-conformance /authority-contract-cases.json
 
 FROM eclipse-temurin:25-jre-noble@sha256:d9a39a23634650173f1e2bbc176227af9728587ecf0f4b62d53e9355cd7a19ab
 ARG VERSION=0.0.0-dev

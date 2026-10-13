@@ -16,3 +16,19 @@ Subscriptions is the **billing executor**, not a source of tenant identity, subs
 ## Remaining operational gates
 
 Actual IAM-issued workload token validation in staging, approved command producer identity, Subscription projection to ERP/Trade correlation, legal-actor responsibility for chargeable invoices and independent provider acceptance must be demonstrated in the protected end-to-end qualification. No fake Nabhold/Thamani affiliation or pre-incorporation legal entity may be used to satisfy these gates. This change is deliberately a **fail-closed enforcement boundary**; it does not grant provider readiness or make billing production-capable.
+
+
+## P0-04A implementation follow-up — 13 October 2026
+
+Exact Shared `a9c53087` authority/event schemas and complete immutable closure are
+now embedded and hash-checked. Current INTERNAL CP facts and founding receipt
+wires are validated at point of use before existing independent binding, lease,
+verified-workload and replay checks. Duplicate/trailing JSON denies and CP body
+retention is bounded during reads under the complete deadline. The producer,
+classification, zero-charge and protected command-origin controls remain in force.
+
+This is an implementation record, not a new architecture decision or admission.
+No current CP-assessor profile is registered for Subscriptions at this pin. Real
+workload/scope admission, legal responsibility for chargeable invoices, provider
+readiness and protected runtime acceptance remain independent. See [P0-04A
+maintenance/audit notes](../plans/P0-04A-subscriptions-contract-convergence.md).

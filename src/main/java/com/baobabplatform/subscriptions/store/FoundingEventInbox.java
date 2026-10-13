@@ -1,6 +1,7 @@
 package com.baobabplatform.subscriptions.store;
 
 import com.baobabplatform.subscriptions.json.Json;
+import com.baobabplatform.subscriptions.contract.Contracts;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import java.time.Instant;
@@ -28,6 +29,11 @@ public interface FoundingEventInbox {
 
     /** Reject corrupted/misattributed events BEFORE any durable receipt. */
     static UUID verify(JsonNode event) {
+        // The declared envelope is closed, including platform/tenant context.
+        // Receipt remains an invalidation/audit hint after wire conformance.
+        if (event == null || !Contracts.validEntry("envelope", event)) {
+            throw new IllegalArgumentException("invalid pinned founding event envelope");
+        }
         if (!"1.0".equals(event.path("specversion").asText())
                 || !"urn:baobab-platform:service:baobab-cp".equals(event.path("source").asText())
                 || !"application/json".equals(event.path("datacontenttype").asText())
@@ -55,6 +61,9 @@ public interface FoundingEventInbox {
             throw new IllegalArgumentException("unregistered founding event type");
         }
         String[] parts = rule.split(":", 2);
+        if (!Contracts.validEntry(parts[0], event.path("data"))) {
+            throw new IllegalArgumentException("invalid pinned founding event payload");
+        }
         String expectedSchema = "https://contracts.baobab-platform.com/admission/v2/"
                 + "founding-lifecycle-events.schema.json#/$defs/" + parts[0];
         if (!expectedSchema.equals(event.path("dataschema").asText())
@@ -83,7 +92,8 @@ public interface FoundingEventInbox {
         try {
             return Json.mapper().readTree(rawEvent);
         } catch (java.io.IOException invalid) {
-            throw new IllegalArgumentException("invalid JSON event", invalid);
+            // Do not retain a parser exception that may contain input fragments.
+            throw new IllegalArgumentException("invalid JSON event");
         }
     }
 }

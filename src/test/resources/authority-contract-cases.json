@@ -1,0 +1,1828 @@
+[
+  {
+    "name": "internal_authority/valid",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": true
+  },
+  {
+    "name": "internal_authority/null",
+    "contract": "internal_authority",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/tenant_id",
+    "contract": "internal_authority",
+    "instance": {
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/tenant_id",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": [
+        "invalid-type"
+      ],
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/product_subscription_id",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/product_subscription_id",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": [
+        "invalid-type"
+      ],
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/classification_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/classification_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": [
+        "invalid-type"
+      ],
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/eligible",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/eligible",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": [
+        "invalid-type"
+      ],
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/evaluated_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/evaluated_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": [
+        "invalid-type"
+      ],
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/expires_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/expires_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": [
+        "invalid-type"
+      ],
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/missing/policy_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/wrong-type/policy_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/unknown-property",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "tenant_id/valid",
+    "contract": "tenant_id",
+    "instance": "tn_synthetic123",
+    "valid": true
+  },
+  {
+    "name": "tenant_id/null",
+    "contract": "tenant_id",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "tenant_id/wrong-type",
+    "contract": "tenant_id",
+    "instance": 123,
+    "valid": false
+  },
+  {
+    "name": "product_subscription_id/valid",
+    "contract": "product_subscription_id",
+    "instance": "sub_synthetic123",
+    "valid": true
+  },
+  {
+    "name": "product_subscription_id/null",
+    "contract": "product_subscription_id",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "product_subscription_id/wrong-type",
+    "contract": "product_subscription_id",
+    "instance": 123,
+    "valid": false
+  },
+  {
+    "name": "classification_reference/valid",
+    "contract": "classification_reference",
+    "instance": "synthetic/adm/123",
+    "valid": true
+  },
+  {
+    "name": "classification_reference/null",
+    "contract": "classification_reference",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "classification_reference/wrong-type",
+    "contract": "classification_reference",
+    "instance": 123,
+    "valid": false
+  },
+  {
+    "name": "envelope/valid",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": true
+  },
+  {
+    "name": "envelope/null",
+    "contract": "envelope",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/specversion",
+    "contract": "envelope",
+    "instance": {
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/specversion",
+    "contract": "envelope",
+    "instance": {
+      "specversion": [
+        "invalid-type"
+      ],
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/id",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/id",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": [
+        "invalid-type"
+      ],
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/type",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/type",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": [
+        "invalid-type"
+      ],
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/source",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/source",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": [
+        "invalid-type"
+      ],
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/subject",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/subject",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": [
+        "invalid-type"
+      ],
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/time",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/time",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": [
+        "invalid-type"
+      ],
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/datacontenttype",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/datacontenttype",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": [
+        "invalid-type"
+      ],
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/dataschema",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/dataschema",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": [
+        "invalid-type"
+      ],
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/baobabscope",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/baobabscope",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": [
+        "invalid-type"
+      ],
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/correlationid",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/correlationid",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": [
+        "invalid-type"
+      ],
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/missing/data",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/wrong-type/data",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/unknown-property",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      },
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/valid",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": true
+  },
+  {
+    "name": "SponsorshipActivated/null",
+    "contract": "SponsorshipActivated",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/missing/sponsorship_id",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/wrong-type/sponsorship_id",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": [
+        "invalid-type"
+      ],
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/missing/operating_organisation_id",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/wrong-type/operating_organisation_id",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": [
+        "invalid-type"
+      ],
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/missing/status",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/wrong-type/status",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/unknown-property",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/valid",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED"
+    },
+    "valid": true
+  },
+  {
+    "name": "SponsorshipSuspended/null",
+    "contract": "SponsorshipSuspended",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/missing/sponsorship_id",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/wrong-type/sponsorship_id",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": [
+        "invalid-type"
+      ],
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/missing/operating_organisation_id",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/wrong-type/operating_organisation_id",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": [
+        "invalid-type"
+      ],
+      "status": "SUSPENDED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/missing/status",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/wrong-type/status",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/unknown-property",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/valid",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": true
+  },
+  {
+    "name": "SponsorshipRevoked/null",
+    "contract": "SponsorshipRevoked",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/missing/sponsorship_id",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/wrong-type/sponsorship_id",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": [
+        "invalid-type"
+      ],
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/missing/operating_organisation_id",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/wrong-type/operating_organisation_id",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": [
+        "invalid-type"
+      ],
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/missing/status",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/wrong-type/status",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/unknown-property",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/valid",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": true
+  },
+  {
+    "name": "SponsorshipExpired/null",
+    "contract": "SponsorshipExpired",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/missing/sponsorship_id",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/wrong-type/sponsorship_id",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": [
+        "invalid-type"
+      ],
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/missing/operating_organisation_id",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/wrong-type/operating_organisation_id",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": [
+        "invalid-type"
+      ],
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/missing/status",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/wrong-type/status",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/unknown-property",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/valid",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": true
+  },
+  {
+    "name": "DeferralActivated/null",
+    "contract": "DeferralActivated",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/missing/deferral_id",
+    "contract": "DeferralActivated",
+    "instance": {
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/wrong-type/deferral_id",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": [
+        "invalid-type"
+      ],
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/missing/organisation_id",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/wrong-type/organisation_id",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": [
+        "invalid-type"
+      ],
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/missing/status",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/wrong-type/status",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/unknown-property",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/valid",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": true
+  },
+  {
+    "name": "DeferralRevoked/null",
+    "contract": "DeferralRevoked",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/missing/deferral_id",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/wrong-type/deferral_id",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": [
+        "invalid-type"
+      ],
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/missing/organisation_id",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/wrong-type/organisation_id",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": [
+        "invalid-type"
+      ],
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/missing/status",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/wrong-type/status",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/unknown-property",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/valid",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": true
+  },
+  {
+    "name": "DeferralExpired/null",
+    "contract": "DeferralExpired",
+    "instance": null,
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/missing/deferral_id",
+    "contract": "DeferralExpired",
+    "instance": {
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/wrong-type/deferral_id",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": [
+        "invalid-type"
+      ],
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/missing/organisation_id",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/wrong-type/organisation_id",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": [
+        "invalid-type"
+      ],
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/missing/status",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/wrong-type/status",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": [
+        "invalid-type"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/unknown-property",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED",
+      "authority_granted": true
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/valid-negative",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": false,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": true
+  },
+  {
+    "name": "internal_authority/invalid/eligible",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": "true",
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/policy_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/classification_reference",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/evaluated_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-02-30T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/expires_at",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "not-a-time",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/tenant_id",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "TN_BAD",
+      "product_subscription_id": "sub_synthetic123",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "internal_authority/invalid/product_subscription_id",
+    "contract": "internal_authority",
+    "instance": {
+      "tenant_id": "tn_synthetic123",
+      "product_subscription_id": "sub_bad!",
+      "classification_reference": "synthetic/adm/123",
+      "eligible": true,
+      "evaluated_at": "2026-10-13T00:00:00Z",
+      "expires_at": "2026-10-13T00:00:03Z",
+      "policy_reference": "ADR-BCP-017/PEO-02D"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/uuid-short-form",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "1-1-1-1-1",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipActivated/wrong-lifecycle",
+    "contract": "SponsorshipActivated",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/uuid-short-form",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "1-1-1-1-1",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "SUSPENDED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipSuspended/wrong-lifecycle",
+    "contract": "SponsorshipSuspended",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/uuid-short-form",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "1-1-1-1-1",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipRevoked/wrong-lifecycle",
+    "contract": "SponsorshipRevoked",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/uuid-short-form",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "1-1-1-1-1",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "SponsorshipExpired/wrong-lifecycle",
+    "contract": "SponsorshipExpired",
+    "instance": {
+      "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/uuid-short-form",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "1-1-1-1-1",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "ACTIVE"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralActivated/wrong-lifecycle",
+    "contract": "DeferralActivated",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/uuid-short-form",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "1-1-1-1-1",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "REVOKED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralRevoked/wrong-lifecycle",
+    "contract": "DeferralRevoked",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/uuid-short-form",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "1-1-1-1-1",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "EXPIRED"
+    },
+    "valid": false
+  },
+  {
+    "name": "DeferralExpired/wrong-lifecycle",
+    "contract": "DeferralExpired",
+    "instance": {
+      "deferral_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "status": "FORGED"
+    },
+    "valid": false
+  },
+  {
+    "name": "tenant_id/invalid-pattern",
+    "contract": "tenant_id",
+    "instance": "tn_BAD",
+    "valid": false
+  },
+  {
+    "name": "product_subscription_id/invalid-pattern",
+    "contract": "product_subscription_id",
+    "instance": "sub_BAD",
+    "valid": false
+  },
+  {
+    "name": "classification_reference/too-short",
+    "contract": "classification_reference",
+    "instance": "xx",
+    "valid": false
+  },
+  {
+    "name": "classification_reference/too-long",
+    "contract": "classification_reference",
+    "instance": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "valid": false
+  },
+  {
+    "name": "envelope/platform-with-tenant",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      },
+      "tenantid": "tn_synthetic123"
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/tenant-without-tenant",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "tenant",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "envelope/valid-tenant",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-10-13T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "tenant",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      },
+      "tenantid": "tn_synthetic123"
+    },
+    "valid": true
+  },
+  {
+    "name": "envelope/impossible-date",
+    "contract": "envelope",
+    "instance": {
+      "specversion": "1.0",
+      "id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "type": "com.baobab-platform.control-plane.founding-sponsorship.suspended.v1",
+      "source": "urn:baobab-platform:service:baobab-cp",
+      "subject": "founding-governance/0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "time": "2026-02-30T00:00:00Z",
+      "datacontenttype": "application/json",
+      "dataschema": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+      "baobabscope": "platform",
+      "correlationid": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+      "data": {
+        "sponsorship_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "operating_organisation_id": "0199a1b2-c3d4-7e8f-9a0b-1c2d3e4f5a6b",
+        "status": "SUSPENDED"
+      }
+    },
+    "valid": false
+  }
+]

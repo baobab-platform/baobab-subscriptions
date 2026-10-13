@@ -1,6 +1,7 @@
 package com.baobabplatform.subscriptions.service;
 
 import com.baobabplatform.subscriptions.json.Json;
+import com.baobabplatform.subscriptions.contract.Contracts;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.net.URI;
@@ -15,6 +16,10 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * PEO-02D current INTERNAL policy adapter, evaluated on every operation.
@@ -44,7 +49,7 @@ public final class CpInternalAuthorityGate implements InternalAuthorityGate {
         }
         if (controlPlaneBase.getUserInfo() != null || controlPlaneBase.getRawQuery() != null
                 || controlPlaneBase.getRawFragment() != null || controlPlaneBase.getHost() == null
-                || !tokenFile.isAbsolute()) {
+                || !tokenFile.isAbsolute() || http.followRedirects() != HttpClient.Redirect.NEVER) {
             throw new IllegalArgumentException("Control Plane URL and identity token path must be explicit");
         }
     }
@@ -57,15 +62,22 @@ public final class CpInternalAuthorityGate implements InternalAuthorityGate {
 
     @Override
     public boolean currentlyAuthorised(String tenant, String subscription, String reference) {
+        CompletableFuture<HttpResponse<byte[]>> exchange = null;
         try {
-            if (tenant == null || !tenant.matches("tn_[a-z0-9]+")
-                    || subscription == null || !subscription.matches("sub_[a-z0-9]+")
-                    || reference == null || reference.length() < 3 || reference.length() > 128) {
+            // Reuse the owned response-property grammars for the GET tuple;
+            // Shared defines no separate request schema for this endpoint.
+            if (!Contracts.validEntry("tenant_id", Json.mapper().valueToTree(tenant))
+                    || !Contracts.validEntry("product_subscription_id", Json.mapper().valueToTree(subscription))
+                    || !Contracts.validEntry("classification_reference", Json.mapper().valueToTree(reference))) {
                 return false;
             }
-            String token = Files.readString(tokenFile, StandardCharsets.UTF_8).trim();
-            if (token.isEmpty() || token.length() > 8192 || token.indexOf(' ') >= 0
-                    || token.indexOf('\n') >= 0 || token.indexOf('\r') >= 0) {
+            byte[] credential;
+            try (var input = Files.newInputStream(tokenFile)) {
+                credential = input.readNBytes(8193);
+            }
+            if (credential.length > 8192) return false;
+            String token = StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(credential)).toString().trim();
+            if (token.isEmpty() || token.chars().anyMatch(c -> c <= 32 || c >= 127)) {
                 return false;
             }
             String base = controlPlaneBase.toString().replaceAll("/+$", "");
@@ -79,12 +91,15 @@ public final class CpInternalAuthorityGate implements InternalAuthorityGate {
                     .header("Accept", "application/json")
                     .header("Cache-Control", "no-store")
                     .build();
-            HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            // The complete-response future deadline includes a slow body after
+            // prompt headers; the subscriber bounds retention before copying.
+            exchange = http.sendAsync(request, ignored -> new BoundedJsonBodySubscriber());
+            HttpResponse<byte[]> response = exchange.get(3, TimeUnit.SECONDS);
             if (response.statusCode() != 200 || response.body().length > MAX_RESPONSE_BYTES) {
                 return false;
             }
             JsonNode result = Json.mapper().readTree(response.body());
-            if (!result.isObject() || !result.path("eligible").isBoolean()
+            if (result == null || !Contracts.validEntry("internal_authority", result)
                     || !result.path("eligible").booleanValue()
                     || !tenant.equals(result.path("tenant_id").asText())
                     || !subscription.equals(result.path("product_subscription_id").asText())
@@ -99,15 +114,18 @@ public final class CpInternalAuthorityGate implements InternalAuthorityGate {
             return !evaluated.isAfter(now.plusSeconds(1))
                     && !evaluated.isBefore(now.minusSeconds(5))
                     && expires.isAfter(now)
+                    && expires.isAfter(evaluated)
                     && !expires.isAfter(evaluated.plusSeconds(5))
                     && result.path("policy_reference").asText().length() >= 10;
-        } catch (IOException | InterruptedException | RuntimeException failure) {
+        } catch (IOException | InterruptedException | ExecutionException | TimeoutException | RuntimeException failure) {
             if (failure instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
             // Absence of credential, CP outage, malformed response or stale
             // policy must be a denial, never a fallback to classification.
             return false;
+        } finally {
+            if (exchange != null && !exchange.isDone()) exchange.cancel(true);
         }
     }
 }

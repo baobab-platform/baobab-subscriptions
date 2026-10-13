@@ -5,8 +5,11 @@ schema: baobab-contract-consumer-lock
 version: "1.0"
 source:
   repository: baobab-platform/shared
-  commit: d8e544e2b3197a4d4f74446e6c7acba3772df934
+  commit: a9c53087d63caa356edf54ec8037ba1713c4827f
 contracts:
+  # Actual workload/scope vocabulary; no admission is inferred from the pin.
+  - contracts/identity/v1/workload-registry.yaml
+  - contracts/authorization/v1/scope-registry.yaml
   - contracts/admission/v1/application.schema.json
   - contracts/admission/v1/decision.schema.json
   - contracts/admission/v2/founding-lifecycle-events.schema.json
