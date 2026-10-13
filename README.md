@@ -34,7 +34,7 @@ All cross-repository contracts are canonical in [`baobab-platform/shared`](https
 |---|---|
 | `contracts/subscriptions/v1` | The Baobab Billing API (billing projection, usage) and its events |
 | `contracts/product/v1` | The ProductSubscription classification this engine consumes, and `billing-policy.yaml` |
-| `contracts/payments/v1` | The payment API this engine calls for commercial payment |
+| `contracts/payments/v1` | Planned commercial-payment handoff; the client is not configured or invoked |
 
 ## Runtime
 
