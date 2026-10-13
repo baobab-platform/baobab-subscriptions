@@ -3,6 +3,8 @@ package com.baobabplatform.subscriptions;
 import com.baobabplatform.subscriptions.auth.WorkloadAuthenticator;
 import com.baobabplatform.subscriptions.config.Config;
 import com.baobabplatform.subscriptions.config.ConfigException;
+import com.baobabplatform.subscriptions.contract.Contracts;
+import com.baobabplatform.subscriptions.contract.ContractProbe;
 import com.baobabplatform.subscriptions.http.HttpApi;
 import com.baobabplatform.subscriptions.log.Log;
 import com.baobabplatform.subscriptions.payments.PaymentsPort;
@@ -30,6 +32,13 @@ public final class Application {
     }
 
     public static void main(String[] args) throws Exception {
+        // Offline packaging probes must not construct a provider or access
+        // issuer credentials/database configuration.
+        if (args.length > 0 && args[0].startsWith("contract-")) {
+            ContractProbe.main(args);
+            return;
+        }
+        Contracts.verifyBundle();
         Config config;
         try {
             config = Config.fromEnvironment(System.getenv());

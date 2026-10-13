@@ -1,6 +1,9 @@
 package com.baobabplatform.subscriptions.json;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.StreamReadConstraints;
+import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -10,12 +13,17 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 /** The one JSON configuration the Billing API speaks: snake_case, ISO-8601 instants, no nulls. */
 public final class Json {
-    private static final ObjectMapper MAPPER = JsonMapper.builder()
+    // Authority, commands and event IDs must have one interpretation. Reject
+    // duplicate members recursively, trailing documents and excessive nesting.
+    private static final ObjectMapper MAPPER = JsonMapper.builder(JsonFactory.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .streamReadConstraints(StreamReadConstraints.builder().maxNestingDepth(64).build()).build())
             .addModule(new JavaTimeModule())
             .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
             .defaultPropertyInclusion(JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
             .build();
 
     private Json() {

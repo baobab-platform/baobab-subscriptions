@@ -25,6 +25,20 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 | 0013 | Payment obligation handoff | Not started | `PaymentsPort` (not configured); zero-charge policies never consult it | `FinancialObligation`, the handoff to `baobab-payments`, collection state and delinquency |
 | 0014 | Events and transactional messaging | Partial | Local ACID transactions with a transactional outbox, canonical versioned envelopes, idempotent handlers, revision checks | The outbox relay, the consumer inbox, dead-letter and quarantine handling, cross-engine reconciliation |
 | 0015 | Kill Bill adapter and provider portability | Partial | The provider-neutral `BillingProvider` port; provider state kept apart from projection state | `KillBillAdapter`, with a Kill Bill release and a PostgreSQL version pinned after verification (ADR-SUB-0001 §7) |
-| 0016 | Security, workload identity, audit | Partial | Workload-only JWTs with the issuer, audience, allowed-client and per-route-scope checks (§7-10); trusted tenant context and tenant-scoped lookups with cross-tenant not-found (§11-14); a caller cannot manufacture INTERNAL (§17-19); controlled commands (§20-23); idempotency with mismatch refusal (§24-28); revision-aware mutation (§29); append-only audit records in the same transaction (§35-36, §40); problems that carry no secrets (§48) | Event authentication for consumed events (§31-33, which need an inbox); audit read access and retention (§41); provider credential isolation (§44, which needs a real provider) |
+| 0016 | Security, workload identity, audit | Partial | Workload-only JWTs with the issuer, audience, allowed-client and per-route-scope checks (§7-10); trusted tenant context and tenant-scoped lookups with cross-tenant not-found (§11-14); a caller cannot manufacture INTERNAL (§17-19); controlled commands (§20-23); idempotency with mismatch refusal (§24-28); revision-aware mutation (§29); append-only audit records in the same transaction (§35-36, §40); problems that carry no secrets (§48); current CP INTERNAL assessments before replay; verified-client founding receipt provenance and owner envelope/payload validation (§31-33) | General subscription lifecycle event intake/authentication beyond the bounded founding inbox (§31-33); audit read access and retention (§41); provider credential isolation (§44, which needs a real provider) |
 | 0017 | Observability and billing correctness | Partial | Liveness and readiness endpoints that report commercial readiness honestly; JSON logs with correlation IDs | Metrics with bounded labels, SLOs, pipeline and reconciliation health, alerts |
 | 0018 | Availability, backup, DR | Partial | PostgreSQL persistence with versioned migrations; a stateless service; in-memory state refused in staging and production | HA topology, backups and PITR, RPO/RTO, restore drills |
+
+## P0-04A follow-up — 13 October 2026
+
+Shared `a9c53087` is now embedded with complete inventory/provenance. Current
+INTERNAL assessment and all seven founding event payloads/envelopes use exact
+owner schemas before existing binding/freshness/durable replay checks. Duplicate
+or trailing JSON denies; CP response retention/deadlines are bounded. The
+independent 144-vector matrix and isolated packaged JAR/image probes protect
+runtime byte/format compatibility. See [audit/maintenance notes](plans/P0-04A-subscriptions-contract-convergence.md).
+
+These controls remain Partial under ADR-SUB-0016. They admit no new workload,
+create no incorporation/mandate evidence and implement no chargeable invoice,
+Kill Bill or Payments adapter. The founding inbox is not the general classified
+ProductSubscription lifecycle synchroniser still required under 0003/0014.

@@ -46,9 +46,17 @@ jobs:
         env:
           EXPECTED_SHARED_COMMIT: ${{ steps.pin.outputs.commit }}
         run: test "$(git -C .shared-contracts rev-parse HEAD)" = "$EXPECTED_SHARED_COMMIT"
+      - name: Install independent owner-validator tooling
+        run: python -m pip install 'PyYAML==6.0.3' 'jsonschema[format-nongpl]==4.26.0'
+      - name: Verify exact closure/inventory and immutable owner wire vectors
+        run: |
+          python scripts/sync_contracts.py --shared-checkout .shared-contracts --check
+          python scripts/verify_contract_owner.py --shared-checkout .shared-contracts
       - uses: actions/setup-java@2a69be27b0baa8a7ec1c0ba665dc022b180664c5 # v6.0.1+1 (main, 2026-09-10)
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
       - run: ./mvnw --batch-mode --no-transfer-progress verify
+      - name: Verify the actual packaged JAR and isolated runtime dependencies
+        run: python scripts/verify_contract_artifact.py --shared-checkout .shared-contracts --jar target/baobab-subscriptions-0.1.0-SNAPSHOT.jar

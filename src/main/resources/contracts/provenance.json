@@ -1,0 +1,42 @@
+{
+  "repository": "baobab-platform/shared",
+  "commit": "a9c53087d63caa356edf54ec8037ba1713c4827f",
+  "entries": {
+    "internal_authority": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json",
+    "tenant_id": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json#/properties/tenant_id",
+    "product_subscription_id": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json#/properties/product_subscription_id",
+    "classification_reference": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json#/properties/classification_reference",
+    "envelope": "https://contracts.baobab-platform.com/events/v1/envelope.schema.json",
+    "SponsorshipActivated": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipActivated",
+    "SponsorshipSuspended": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
+    "SponsorshipRevoked": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipRevoked",
+    "SponsorshipExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipExpired",
+    "DeferralActivated": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralActivated",
+    "DeferralRevoked": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralRevoked",
+    "DeferralExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralExpired"
+  },
+  "files": {
+    "admission/v1/application.schema.json": "3febbc5e37744f50ee64e4737e9ca87bcd959263099356d14fe3734ef482e8f3",
+    "admission/v1/decision.schema.json": "7ac5a22331341a20c3e2d20a1f652149561267fdc20c5201f0d4826426cf3b36",
+    "admission/v2/founding-lifecycle-events.schema.json": "043e3858f8cf82810b09ea6e4ff3ad62b2d4e8fc19032cb3c42f4557fef624f9",
+    "authorization/v1/scope-registry.yaml": "62bb4d2a97183d38da67899cddff94bb0657b6df9db96119cff1252702d86066",
+    "capability/v1/domain.schema.json": "45bd91c915bff16c010b4123a8dc814ceded7d2806a6755b13dc3fcdd508d4fc",
+    "control-plane/v1/domain.schema.json": "d310ea065ba9445a27a83d50875a2616514608782345e7bb4413d9d1d69416ee",
+    "errors/v1/problem-details.schema.json": "639f97cc1a9a167e2a3dfa1a0d41d619e5b839d88752029395f7f91610a8e423",
+    "events/v1/envelope.schema.json": "1e7065b903c2732df23e095a4ac5cc3c18c1f553f21c56595669ded08fd6a69f",
+    "evidence/v1/domain.schema.json": "36847f9a85bc8e45cb2944851145e07e776abb2140f3626b9e922ed224226a64",
+    "identity/v1/workload-registry.yaml": "e20fd4309cd5e955541ee0ccaa14d23388b995fb3506d439c72dfc130136141d",
+    "organisation/v1/admission.schema.json": "e24b7942afb626a91d1e6f42d905609fbb53102bc91d492285f375c1b399bcf1",
+    "organisation/v1/domain.schema.json": "8409e3d9f1741421ee08818540ddeae60e1990dd9b117826f032d3733f3c5801",
+    "organisation/v1/platform.schema.json": "cca98334ef4974c7ce534412f2a6784cb46d62f11fc60b7db96eef97795acdf8",
+    "organisation/v1/relationship.schema.json": "b4cd03addc0ea24f183d6d71c744bf5d9ff70808abe8116b25e943dd79e2d171",
+    "product/v1/billing-policy.yaml": "2b2e4ff1c25e9102f3a4f1c4da802bb58bf90c4d87cd8a8c32bbe76042068a11",
+    "product/v1/domain.schema.json": "093933293d3dd899f2a66b50bbffacadc9642aff542890803f2a07f08740175c",
+    "product/v1/subscription.schema.json": "e0c1e62667285b70a9296c06843230193329254fcb42587533d8b2dafd40ebd3",
+    "subscriptions/v1/billing.schema.json": "e89ce3923267a068d0e345a30b16f7a450e2e08c09061075f0b1e8271018f74a",
+    "subscriptions/v1/capabilities.json": "f2fa060e945d39b3a0e981ef777938b1755c4c0fb19119f22e965378ff8e9a2e",
+    "subscriptions/v1/domain.schema.json": "421a6db8b42417246598cbe91be47f895968423e1a79b17943da5d1d28521f5f",
+    "subscriptions/v1/events.schema.json": "a91297cc8e4eae8a7d0a1a161227778fe07185a6b6878d625771b89dffb6992c",
+    "subscriptions/v1/internal-authority.schema.json": "bbbb934ff9d6990cd3a6e3c4f2b6d0f14f14afad527569163b3b16ee441f5afc"
+  }
+}

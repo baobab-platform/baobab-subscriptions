@@ -8,3 +8,7 @@
 build/
 dist/
 target/
+
+# Maintainer contract tooling.
+__pycache__/
+*.pyc
