@@ -16,7 +16,7 @@ RUN mvn --batch-mode --no-transfer-progress -DskipTests package \
  && java -jar baobab-subscriptions.jar contract-self-test \
  && java -jar baobab-subscriptions.jar contract-conformance /authority-contract-cases.json
 
-FROM eclipse-temurin:25-jre-noble@sha256:d9a39a23634650173f1e2bbc176227af9728587ecf0f4b62d53e9355cd7a19ab
+FROM eclipse-temurin:25-jre-noble@sha256:3f2223fe04b750aa5a8179e29b5c9a1ddf7665fc9bb08bfe11ad01d143bc13a5
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="baobab-subscriptions" \
