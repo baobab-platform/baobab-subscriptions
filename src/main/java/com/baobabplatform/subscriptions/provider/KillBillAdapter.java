@@ -147,8 +147,7 @@ public final class KillBillAdapter implements BillingProvider, AutoCloseable {
             String id = object.path("subscriptionId").asText();
             String state = object.path("state").asText();
             if (!key.equals(foundKey) || !uuid(id)
-                    || !("ACTIVE".equals(state) || "BLOCKED".equals(state)
-                         || "PENDING".equals(state) || "CANCELLED".equals(state))) {
+                    || !("ACTIVE".equals(state) || "PENDING".equals(state))) {
                 return ProviderOutcome.failure(ProviderOutcome.Status.CONFLICT, "PROVIDER_IDENTITY_OR_STATE_CONFLICT");
             }
             return ProviderOutcome.alreadyConverged(id);
