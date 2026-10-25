@@ -58,10 +58,16 @@ public final class ProviderReconciliationService {
         }
     }
 
-    private Projection verifyCurrent(BillingStore.Tx tx, ProviderOperation op) {
+    private Projection verifyCurrent(BillingStore.Tx tx, ProviderOperation op,
+                                     boolean requireExactRevision) {
         Projection p = tx.projection(op.tenantId(), op.billingSubscriptionId())
                 .orElseThrow(() -> new IllegalStateException("current tenant projection missing"));
-        if (p.authoritativeRevision() != op.authoritativeRevision()
+        // Only dispatch must be fenced to the exact live CP revision.
+        // A previously dispatched operation may require read-only recovery
+        // after newer commercial terms have arrived; it must not become
+        // unobservable just because its original revision is historical.
+        if ((requireExactRevision ? p.authoritativeRevision() != op.authoritativeRevision()
+                    : p.authoritativeRevision() < op.authoritativeRevision())
                 || !p.billingPolicy().billingRequired()
                 || !p.provider().kind().equals(op.providerKind())
                 || p.provider().simulated() || !provider.kind().equals(op.providerKind())
@@ -91,6 +97,20 @@ public final class ProviderReconciliationService {
             }
             return;
         }
+        // An intent that was never SENT can be safely retired by a newer
+        // CP revision. SENT/UNKNOWN/failed operations may have a remote
+        // consequence and remain unresolved until explicitly observed.
+        for (ProviderOperation earlier : tx.unresolvedProviderOperations(
+                projection.tenantId(), provider.kind(), projection.billingSubscriptionId())) {
+            if (earlier.state() == ProviderOperation.State.PREPARED) {
+                ProviderOperation superseded = earlier.change(ProviderOperation.State.SUPERSEDED,
+                        null, earlier.leaseEpoch(), null, "SUPERSEDED_BEFORE_DISPATCH", at);
+                tx.updateProviderOperation(superseded, earlier.state(), earlier.leaseEpoch());
+                tx.appendAudit(audit(superseded, projection, "provider_operation.superseded",
+                        earlier.state().name(), superseded.state().name(),
+                        "SUPERSEDED_BEFORE_DISPATCH", "baobab-subscriptions", at));
+            }
+        }
         ProviderOperationIntent intent = new ProviderOperationIntent(UUID.randomUUID(),
                 projection.tenantId(), projection.billingSubscriptionId(), projection.authoritativeRevision(),
                 operationKind, requestSha256);
@@ -115,9 +135,18 @@ public final class ProviderReconciliationService {
         return store.transact(tx -> {
             ProviderOperation prior = tx.providerOperation(tenantId, id)
                     .orElseThrow(() -> new IllegalArgumentException("provider operation not found"));
-            Projection projection = verifyCurrent(tx, prior);
+            Projection projection = verifyCurrent(tx, prior, true);
             if (prior.state() != ProviderOperation.State.PREPARED) {
                 throw new IllegalStateException("a dispatched or uncertain operation cannot be re-dispatched");
+            }
+            // A newer intent is forbidden to dispatch until every earlier
+            // operation for this canonical billing subscription has a
+            // conclusive status, regardless of its idempotency key/revision.
+            boolean predecessorUnresolved = tx.unresolvedProviderOperations(
+                    tenantId, provider.kind(), prior.billingSubscriptionId()).stream()
+                    .anyMatch(other -> !other.operationId().equals(prior.operationId()));
+            if (predecessorUnresolved) {
+                throw new IllegalStateException("earlier provider outcome is unresolved; observe before dispatch");
             }
             Instant at = now();
             ProviderOperation claimed = prior.change(ProviderOperation.State.SENT,
@@ -140,7 +169,7 @@ public final class ProviderReconciliationService {
         return store.transact(tx -> {
             ProviderOperation prior = tx.providerOperation(tenantId, id)
                     .orElseThrow(() -> new IllegalArgumentException("provider operation not found"));
-            Projection projection = verifyCurrent(tx, prior);
+            Projection projection = verifyCurrent(tx, prior, false);
             Instant at = now();
             if (prior.state() != ProviderOperation.State.SENT || !prior.leaseCurrent(worker, epoch, at)) {
                 throw new IllegalStateException("dispatch lease is stale, expired or does not match its owner");
@@ -181,7 +210,7 @@ public final class ProviderReconciliationService {
         ProviderOperation claimed = store.transact(tx -> {
             ProviderOperation prior = tx.providerOperation(tenantId, id)
                     .orElseThrow(() -> new IllegalArgumentException("provider operation not found"));
-            Projection projection = verifyCurrent(tx, prior);
+            Projection projection = verifyCurrent(tx, prior, false);
             Instant at = now();
             boolean expiredSent = prior.state() == ProviderOperation.State.SENT
                     && prior.leaseExpiresAt() != null && !prior.leaseExpiresAt().isAfter(at);
@@ -204,7 +233,7 @@ public final class ProviderReconciliationService {
             observed = ProviderOutcome.failure(ProviderOutcome.Status.UNKNOWN_OUTCOME, "OBSERVATION_NOT_SUPPORTED");
         } else {
             try {
-                Projection projection = store.transact(tx -> verifyCurrent(tx, claimed));
+                Projection projection = store.transact(tx -> verifyCurrent(tx, claimed, false));
                 observed = provider.observeSubscription(projection,
                         new ProviderOperationIntent(claimed.operationId(), claimed.tenantId(),
                                 claimed.billingSubscriptionId(), claimed.authoritativeRevision(),
@@ -220,7 +249,7 @@ public final class ProviderReconciliationService {
         return store.transact(tx -> {
             ProviderOperation prior = tx.providerOperation(tenantId, id)
                     .orElseThrow(() -> new IllegalStateException("provider operation disappeared"));
-            Projection projection = verifyCurrent(tx, prior);
+            Projection projection = verifyCurrent(tx, prior, false);
             Instant at = now();
             if (prior.state() != ProviderOperation.State.UNKNOWN_OUTCOME
                     || !prior.leaseCurrent(worker, claimed.leaseEpoch(), at)) {
