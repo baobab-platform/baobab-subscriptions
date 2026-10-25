@@ -187,6 +187,30 @@ class ProviderReconciliationTest {
         assertEquals(ProviderOperation.State.SENT, newerClaim.state(),
                 "a newer intent may dispatch only after earlier uncertainty is reconciled");
         assertEquals(2, observer.observations.get(), "claiming a lease is not a network request");
+        // Distinct case: a newer authoritative revision can retire an intent
+        // that was NEVER SENT, without treating it as an uncertain dispatch.
+        String tenantUnsent = Fixtures.ACME_TENANT + UUID.randomUUID().toString().replace("-", "");
+        String bodyUnsent = new String(Fixtures.acmeCommercial(), StandardCharsets.UTF_8)
+                .replace(Fixtures.ACME_TENANT, tenantUnsent);
+        CallContext firstUnsent = new CallContext("baobab-cp-workload", "synthetic-operator",
+                "unsent-" + UUID.randomUUID(), "synthetic-revision");
+        billing.ensure(firstUnsent, bodyUnsent.getBytes(StandardCharsets.UTF_8));
+        ProviderOperation oldPrepared = store.transact(tx -> tx.providerOperationForKey(
+                tenantUnsent, "KILLBILL", "ENSURE_SUBSCRIPTION", firstUnsent.idempotencyKey())).orElseThrow();
+        CallContext newerUnsent = new CallContext("baobab-cp-workload", "synthetic-operator",
+                "newer-unsent-" + UUID.randomUUID(), "synthetic-revision");
+        billing.ensure(newerUnsent, bodyUnsent.replace(":1,", ":2,")
+                .replace("subcls_01k9acmecommercial", "subcls_01k9acmecommercialv2")
+                .getBytes(StandardCharsets.UTF_8));
+        assertEquals(ProviderOperation.State.SUPERSEDED,
+                svc.find(tenantUnsent, oldPrepared.operationId()).orElseThrow().state());
+        ProviderOperation latest = store.transact(tx -> tx.providerOperationForKey(
+                tenantUnsent, "KILLBILL", "ENSURE_SUBSCRIPTION", newerUnsent.idempotencyKey())).orElseThrow();
+        assertEquals(ProviderOperation.State.PREPARED, latest.state());
+        assertEquals(ProviderOperation.State.SENT,
+                svc.claimForDispatch(tenantUnsent, latest.operationId(),
+                        "worker-unsent", Duration.ofSeconds(2)).state());
+
         assertNotNull(store.audit(tenant));
         assertTrue(store.audit(tenant).stream()
                         .anyMatch(e -> e.operation().equals("provider_operation.observation_result")),
