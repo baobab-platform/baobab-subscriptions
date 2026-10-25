@@ -11,6 +11,9 @@ import com.baobabplatform.subscriptions.payments.PaymentsPort;
 import com.baobabplatform.subscriptions.policy.BillingPolicies;
 import com.baobabplatform.subscriptions.provider.BillingProvider;
 import com.baobabplatform.subscriptions.provider.TemporaryProvider;
+import com.baobabplatform.subscriptions.provider.KillBillAdapter;
+import com.baobabplatform.subscriptions.provider.KillBillTenantRegistry;
+import com.baobabplatform.subscriptions.service.ProviderWorkScheduler;
 import com.baobabplatform.subscriptions.service.BillingService;
 import com.baobabplatform.subscriptions.service.CpInternalAuthorityGate;
 import com.baobabplatform.subscriptions.service.InternalAuthorityGate;
@@ -51,7 +54,11 @@ public final class Application {
         BillingPolicies policies = BillingPolicies.load();
         BillingStore store = config.databaseUrl() == null ? new InMemoryBillingStore()
                 : new PostgresBillingStore(config.databaseUrl(), config.databaseUser(), config.databasePassword());
-        BillingProvider provider = new TemporaryProvider();
+        // The concrete Kill Bill adapter is nonproduction-only and cannot
+        // self-authorise financial dispatch from an event, projection or JWT.
+        BillingProvider provider = "killbill".equals(config.billingProvider())
+                ? KillBillTenantRegistry.load(Path.of(System.getenv("KILLBILL_TENANTS_FILE")))
+                : new TemporaryProvider();
         // Only a controlled nonproduction rehearsal can opt in. A missing
         // workload credential or unavailable CP never restores historical
         // INTERNAL permission; the default always denies.
@@ -119,10 +126,39 @@ public final class Application {
         HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment,
                 foundingInbox, controlPlaneClient, commandClient, subscriptionInbox, subscriptionEventClient);
 
+        ProviderWorkScheduler worker = null;
+        if ("true".equals(System.getenv("KILLBILL_WORKER_ENABLED"))) {
+            if (!(provider instanceof KillBillAdapter adapter)
+                    || !(store instanceof PostgresBillingStore pg)) {
+                throw new ConfigException("provider worker requires the real adapter and PostgreSQL");
+            }
+            String workloadFile = System.getenv("KILLBILL_WORKER_IAM_TOKEN_FILE");
+            String workerClient = System.getenv("KILLBILL_WORKER_CLIENT_ID");
+            String tenantIds = System.getenv("KILLBILL_WORKER_TENANTS");
+            if (workloadFile == null || workloadFile.isBlank()
+                    || workerClient == null || workerClient.isBlank()
+                    || !config.allowedClients().contains(workerClient)
+                    || tenantIds == null || tenantIds.isBlank()) {
+                throw new ConfigException("provider worker requires exact IAM identity, token file and approved tenant set");
+            }
+            // CP has not yet delivered the accepted current ProductSubscription
+            // workload read/attestation contract. The only legal runtime gate
+            // here is fail-closed: this worker monitors/cools down pending work
+            // but cannot send provider IO or certify commercial readiness.
+            worker = new ProviderWorkScheduler(pg, billing.providerOperations(), adapter, auth,
+                    Path.of(workloadFile), workerClient,
+                    java.util.Set.of(tenantIds.split(",")),
+                    ProviderWorkScheduler.CpAuthority.unavailable(),
+                    Clock.systemUTC(), false);
+            worker.start(java.time.Duration.ofSeconds(60));
+        }
+        ProviderWorkScheduler finalWorker = worker;
         CountDownLatch stopped = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             Log.info("shutdown.started", Map.of("grace_seconds", config.shutdownGrace().toSeconds()));
             api.stop(config.shutdownGrace());
+            if (finalWorker != null) finalWorker.close();
+            if (provider instanceof KillBillAdapter adapter) adapter.close();
             store.close();
             Log.info("shutdown.completed", Map.of());
             stopped.countDown();
