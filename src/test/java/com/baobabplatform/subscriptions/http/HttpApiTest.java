@@ -62,6 +62,30 @@ class HttpApiTest {
         client = HttpClient.newHttpClient();
     }
 
+    @Test
+    void currentIssuerRevocationIsCheckedAgainForTheSameSignedToken() throws Exception {
+        var active = new java.util.concurrent.atomic.AtomicBoolean(true);
+        var checks = new java.util.concurrent.atomic.AtomicInteger();
+        var current = new WorkloadAuthenticator(ISSUER,
+                new ImmutableJWKSet<>(new JWKSet(key.toPublicJWK())),
+                "baobab-subscriptions", Set.of("baobab-cp-workload"))
+                .withCurrentStatus((bearer, subject, workload, audience, scopes) -> {
+                    checks.incrementAndGet();
+                    assertEquals("service-account-cp", subject);
+                    assertEquals("baobab-cp-workload", workload);
+                    assertEquals("baobab-subscriptions", audience);
+                    return active.get();
+                });
+        String signed = "Bearer " + token();
+        assertEquals("baobab-cp-workload", current.authenticate(signed,"billing:read").clientId());
+        active.set(false);
+        var denied = org.junit.jupiter.api.Assertions.assertThrows(
+                com.baobabplatform.subscriptions.auth.AuthException.class,
+                () -> current.authenticate(signed,"billing:read"));
+        assertEquals(401,denied.status());
+        assertEquals(2,checks.get(),"positive issuer status must never be cached");
+    }
+
     @AfterAll
     static void stop() {
         api.close();

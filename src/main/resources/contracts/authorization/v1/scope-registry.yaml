@@ -581,6 +581,24 @@ scopes:
     allowed_actors: ["human"]
     privileged: true
 
+  - name: "subscription:current-workload-read"
+    description: >-
+      Read the current authoritative tenant-bound ProductSubscription status,
+      revision, classification, policy and primary Organisation. Invoking the
+      read grants no commercial, payer or financial authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    privileged: true
+
+  - name: "subscription:commercial-authority"
+    description: >-
+      Request a fresh deny-by-default, operation/revision-bound pre-dispatch
+      decision from the Control Plane. A current subscription alone never
+      approves a payer, versioned plan, provider or movement of money.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    privileged: true
+
   - name: "subscription:internal-authority"
     description: >-
       Allows an authenticated registered baobab-subscriptions workload to ask
@@ -743,6 +761,272 @@ scopes:
       for a short-lived workload-owned runtime Context. Requires dedicated
       IAM admission, ACTIVE workload registry, explicitly allowlisted caller
       and current CP evidence. Cannot grant any positive business authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  # P0-04B ERP (ADR-SHARED-034): per-operation posting-authority resolution.
+  # CP derives tenant, Organisation, market, role, activity and mandate from
+  # the workload-owned RUNTIME context and the erp/v2 operation catalogue.
+  # AUTHORIZED is a 30-second fact for ONE operation, never a grant.
+  - name: "erp-posting-authority:resolve"
+    description: >-
+      Private workload-only Control Plane resolution of whether a bounded,
+      previously resolved RUNTIME context may perform one catalogued ERP
+      accounting operation through an engine instance bound to its tenant.
+      Requires dedicated IAM admission, ACTIVE workload registry and an
+      explicitly allowlisted caller. Cannot select a legal actor, mandate or
+      market and grants no provider, posting or finance-readiness authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  # P0-04B Payments (ADR-SHARED-035): CP legal authority for ONE catalogued
+  # money movement, bound to its instruction fingerprint and attempt.
+  # AUTHORIZED is a 30-second fact, never a grant, provider permission or
+  # financial approval.
+  - name: "payments-money-movement-authority:resolve"
+    description: >-
+      Private workload-only Control Plane resolution of whether a bounded,
+      previously resolved RUNTIME context may perform one catalogued Payments
+      money movement, for one instruction fingerprint and attempt, through an
+      engine instance bound to its tenant. Requires dedicated IAM admission,
+      ACTIVE workload registry and an explicitly allowlisted caller. Cannot
+      select a legal actor, mandate or market and grants no provider,
+      financial-approval, readiness or accounting authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "trade:buy"
+    description: >-
+      Requests B2B buying operations from Trade on behalf of the authenticated
+      human, through a confidential Digital Estate BFF (identity/v1
+      buyer-identity-handoff.schema.json; IAM ADR-0010 section 0). It grants no
+      authority: Trade still resolves the canonical Principal and current
+      context through the Control Plane and requires an active buyer
+      membership with the needed role for every operation. Already named by
+      trade/v1 openapi.yaml. Defined here; granted to no client.
+    audience: ["baobab-trade"]
+    allowed_actors: ["human"]
+    grants_authority: false
+
+  # P0-04B Trade-0 (ADR-SHARED-039): CP legal authority for ONE catalogued
+  # consequential Trade operation against ONE CP-owned Seller Operating
+  # Binding version. AUTHORIZED is a 30-second fact, never a grant, provider
+  # permission, money-movement or ERP posting authority.
+  - name: "trade-order-authority:resolve"
+    description: >-
+      Private workload-only Control Plane resolution of whether a bounded,
+      previously resolved RUNTIME context may perform one catalogued Trade
+      operation under one ACTIVE CP Seller Operating Binding version, through
+      an engine instance bound to its tenant, with the attested native
+      configuration digest. Requires dedicated IAM admission, ACTIVE workload
+      registry and an explicitly allowlisted caller. Cannot select a legal
+      actor, mandate, binding status or market and grants no provider,
+      money-movement or accounting authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  # Trade-0: Trade attests its native seller configuration to CP. An
+  # attestation is evidence for a later human proposal; it authorises nothing.
+  - name: "trade-seller-binding:attest"
+    description: >-
+      Private workload-only submission of a Trade native seller-configuration
+      attestation (opaque reference, SHA-256 digest, currency scope) under the
+      workload's RUNTIME context. Creates no binding, approval or activation
+      and grants no authority.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  # Trade-A TA-01: Trade discovers which ACTIVE binding version applies to its
+  # attested native configuration. Discovery identifies a candidate; it is
+  # never order authority.
+  - name: "trade-seller-binding:resolve"
+    description: >-
+      Private workload-only discovery of the single ACTIVE, in-effect Seller
+      Operating Binding version for Trade's opaque native configuration
+      reference, current digest and currency, under the workload's RUNTIME
+      context. Zero or several matches deny. Grants no authority: every
+      consequential operation still resolves its own order-authority decision.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "seller-operating-binding:propose"
+    description: "Human CP command to propose a Seller Operating Binding version from one Trade attestation (maker). Requires the current organisation.seller-operating-binding.propose grant and assurance; never legal or provider authority. Assigned to no client or workload."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "seller-operating-binding:approve"
+    description: "Human CP command to approve or reject one exact pending Seller Operating Binding version (checker; never its proposer). Requires the current organisation.seller-operating-binding.approve grant and assurance; never legal or provider authority. Assigned to no client or workload."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "seller-operating-binding:activate"
+    description: "Human CP command to activate or reinstate one exact approved or suspended Seller Operating Binding version after CP revalidation (operator; never its proposer or approver). Requires the current organisation.seller-operating-binding.activate grant and assurance; never legal or provider authority. Assigned to no client or workload."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "seller-operating-binding:suspend"
+    description: "Human CP command to suspend one exact ACTIVE Seller Operating Binding version. Requires the current organisation.seller-operating-binding.suspend grant and assurance; never legal or provider authority. Assigned to no client or workload."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "seller-operating-binding:revoke"
+    description: "Human CP command to revoke one exact Seller Operating Binding version (terminal). Requires the current organisation.seller-operating-binding.revoke grant and assurance; never legal or provider authority. Assigned to no client or workload."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  # P0-04B-02: CP human command admission; registered, never assigned.
+  - name: "trade-binding:propose"
+    description: "Human CP admission check for an exact Trade cart binding propose command. Requires current organisation.trade-binding.propose grant and assurance; never legal or provider authority. Assigned to no client."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "trade-binding:approve"
+    description: "Human CP admission check for an exact Trade cart binding approve command. Requires current organisation.trade-binding.approve grant and assurance; never legal or provider authority. Assigned to no client."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "trade-binding:activate"
+    description: "Human CP admission check for an exact Trade cart binding activate command. Requires current organisation.trade-binding.activate grant and assurance; never legal or provider authority. Assigned to no client."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+  - name: "trade-binding:revoke"
+    description: "Human CP admission check for an exact Trade cart binding revoke command. Requires current organisation.trade-binding.revoke grant and assurance; never legal or provider authority. Assigned to no client."
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+    grants_authority: false
+
+
+  - name: "identity:principal:resolve"
+    description: >-
+      Read-only delegated human Principal resolution (identity/v1
+      principal-resolution.openapi.yaml; ZB-G03 step 3). The calling workload
+      presents the human's IAM access token, audience-bound to its own
+      resource, as subject evidence; the Control Plane verifies it itself and
+      resolves the exact (issuer, subject). Creates nothing and grants no
+      tenant, membership, role, market or purchasing authority. Allocated to
+      no workload.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "identity:principal:register-buyer"
+    description: >-
+      Governed just-in-time registration of an eligible first-time buyer's
+      canonical human Principal and ExternalIdentity from verified subject
+      evidence (identity/v1 principal-resolution.openapi.yaml). Establishes
+      identity only: no Organisation, membership, tenant, market, role,
+      purchasing authority or commerce-customer mapping. Distinct from
+      identity:principal:resolve. Allocated to no workload.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "estate:client-binding:resolve"
+    description: >-
+      Read-only attestation of the Digital Estate, Tenant and deployment a
+      confidential estate BFF client is authorised to serve (control-plane/v1
+      estate-client-binding.openapi.yaml; ADR-SHARED-042 CAA-04). The calling
+      workload presents the BFF's own IAM workload token as client evidence;
+      the Control Plane verifies it itself. Grants no buyer, membership,
+      market or purchasing authority. Allocated to no workload.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "estate:commerce-profile:resolve"
+    description: >-
+      Read-only attestation of the governed commerce model (B2B or B2C) of a
+      Digital Estate for the calling Trade engine instance and a Market
+      (control-plane/v1 estate-commerce-profile.openapi.yaml; ADR-SHARED-042
+      section 14, Decision 8). It classifies the estate only and grants no
+      seller, buyer, market or purchasing authority. Allocated to no
+      workload.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "estate:resource-assignment:resolve"
+    description: >-
+      Read-only attestation that one non-BFF native commitment operation has
+      governed Digital Estate provenance through an ACTIVE, approved
+      EstateResourceAssignment (control-plane/v1
+      estate-resource-assignment.openapi.yaml; ADR-SHARED-042 section 14,
+      Decision 9). It establishes estate provenance only and grants no
+      seller, buyer, market or purchasing authority. Allocated to no
+      workload.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "estate:resource-assignment:write"
+    description: >-
+      Propose, read, suspend and revoke governed estate resource assignments
+      (ADR-SHARED-042 section 14, Decision 9). Privileged; the actor is
+      always the verified caller. A proposal is never attested. Granted to
+      no role.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+
+  - name: "estate:resource-assignment:approve"
+    description: >-
+      Approve or reinstate a governed estate resource assignment (PROPOSED or
+      SUSPENDED to ACTIVE). Privileged; four-eyes: never the assignment's
+      proposer. Granted to no role.
+    audience: ["baobab-control-plane"]
+    allowed_actors: ["human"]
+    privileged: true
+
+  - name: "trade:native-commitment:submit"
+    description: >-
+      Identifies an authenticated server application (for example an estate's
+      server-side checkout) to Trade when it submits a native commitment
+      outside a BFF (ADR-SHARED-042 section 14, Decision 9). Trade presents
+      the token to the Control Plane as WORKLOAD evidence; it is identity, not
+      authority: estate provenance comes only from an approved CP resource
+      assignment and the commerce model only from the CP estate commerce
+      profile. Never a Medusa key. Allocated to no workload.
+    audience: ["baobab-trade"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "trade:buyer-handoff"
+    description: >-
+      Lets a registered confidential estate BFF present a human buyer's IAM
+      access token to Trade as subject evidence (identity/v1
+      buyer-identity-handoff v1.1, BffCallerTokenClaims). Authenticates the
+      BFF as the caller; grants no identity, estate, membership, market or
+      purchasing authority. Allocated to no workload.
+    audience: ["baobab-trade"]
+    allowed_actors: ["workload"]
+    grants_authority: false
+
+  - name: "identity-runtime:read"
+    description: "Read secret-free current native/workload runtime evidence at an explicitly authorised organisation and estate. CP additionally requires security.identity-runtime.view and current canonical caller authority. Distinct from federation-authority:read and identity-runtime:observe; grants no activation, issuance, membership or configuration authority. Allocated to no workload."
     audience: ["baobab-control-plane"]
     allowed_actors: ["workload"]
     grants_authority: false

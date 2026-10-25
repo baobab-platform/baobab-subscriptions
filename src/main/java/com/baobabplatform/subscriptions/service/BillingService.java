@@ -77,6 +77,7 @@ public final class BillingService {
     private final Clock clock;
     private final InternalAuthorityGate internalAuthority;
     private final ProviderReconciliationService providerOperations;
+    private final CurrentProjectionAuthority currentProjection;
 
     /** An outcome: the HTTP status and the contract body, and whether it replays an earlier request. */
     public record Result(int status, JsonNode body, boolean replayed) {
@@ -88,12 +89,18 @@ public final class BillingService {
 
     public BillingService(BillingStore store, BillingProvider provider, PaymentsPort payments, BillingPolicies policies,
             Clock clock, InternalAuthorityGate internalAuthority) {
+        this(store, provider, payments, policies, clock, internalAuthority, null);
+    }
+
+    public BillingService(BillingStore store, BillingProvider provider, PaymentsPort payments, BillingPolicies policies,
+            Clock clock, InternalAuthorityGate internalAuthority, CurrentProjectionAuthority currentProjection) {
         this.store = Objects.requireNonNull(store);
         this.provider = Objects.requireNonNull(provider);
         this.payments = Objects.requireNonNull(payments);
         this.policies = Objects.requireNonNull(policies);
         this.clock = Objects.requireNonNull(clock);
         this.internalAuthority = Objects.requireNonNull(internalAuthority);
+        this.currentProjection = currentProjection;
         this.providerOperations = new ProviderReconciliationService(store, provider, clock);
     }
 
@@ -121,7 +128,17 @@ public final class BillingService {
         }
     }
 
+    private void requireProjectionAuthority(String tenant, String subscription, long revision, String product,
+            SubscriptionType type, Classification classification) {
+        if (currentProjection != null && !currentProjection.current(tenant,subscription,revision,product,type,classification)) {
+            throw new BillingException(409,"SUBSCRIPTION_AUTHORITY_NOT_CURRENT",
+                    "a matching current Control Plane subscription is required",true);
+        }
+    }
+
     private void requireInternalAuthority(Projection p) {
+        requireProjectionAuthority(p.tenantId(),p.productSubscriptionId(),p.authoritativeRevision(),
+                p.productId(),p.subscriptionType(),p.classification());
         if (p.subscriptionType() == SubscriptionType.INTERNAL) {
             requireInternalAuthority(p.tenantId(), p.productSubscriptionId(),
                     p.classification().classificationReference());
@@ -244,6 +261,8 @@ public final class BillingService {
     public Result ensure(CallContext ctx, byte[] body) {
         JsonNode node = parse(body);
         EnsureRequest req = decode(node, "EnsureBillingProjectionRequest", EnsureRequest.class);
+        requireProjectionAuthority(req.tenantId(),req.productSubscriptionId(),req.authoritativeRevision(),
+                req.productId(),req.subscriptionType(),req.classification());
         BillingPolicy policy = policies.forType(req.subscriptionType());
         // A duplicate ensure request is not allowed to replay an old INTERNAL
         // acceptance after revocation.

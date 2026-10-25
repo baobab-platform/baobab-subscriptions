@@ -21,7 +21,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "src/main/resources/contracts"
-ENTRIES = {'internal_authority': ('subscriptions/v1/internal-authority.schema.json', ''),
+ENTRIES = {'CurrentSubscription': ('product/v1/current-authority.schema.json', '/$defs/CurrentSubscription'),
+ 'CommercialAuthorityRequest': ('product/v1/current-authority.schema.json', '/$defs/CommercialAuthorityRequest'),
+ 'CommercialAuthorityDecision': ('product/v1/current-authority.schema.json', '/$defs/CommercialAuthorityDecision'),
+ 'internal_authority': ('subscriptions/v1/internal-authority.schema.json', ''),
  'tenant_id': ('subscriptions/v1/internal-authority.schema.json', '/properties/tenant_id'),
  'product_subscription_id': ('subscriptions/v1/internal-authority.schema.json',
                              '/properties/product_subscription_id'),

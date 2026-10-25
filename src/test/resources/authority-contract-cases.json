@@ -1872,5 +1872,177 @@
       "classified_at": "2026-10-25T12:00:00Z"
     },
     "valid": false
+  },
+  {
+    "name": "CurrentSubscription-valid",
+    "contract": "CurrentSubscription",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "product_id": "dev-subscriptions",
+      "status": "ACTIVE",
+      "authoritative_revision": 1,
+      "classification": {
+        "classification_id": "subcls_synthetic",
+        "subscription_type": "COMMERCIAL",
+        "classification_source": "MANUAL_GOVERNANCE",
+        "classification_reference": "development:synthetic"
+      },
+      "primary_organisation_id": "01900000-0000-7000-8000-000000000001",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0003/current:v1"
+    },
+    "valid": true
+  },
+  {
+    "name": "CurrentSubscription-unknown-field",
+    "contract": "CurrentSubscription",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "product_id": "dev-subscriptions",
+      "status": "ACTIVE",
+      "authoritative_revision": 1,
+      "classification": {
+        "classification_id": "subcls_synthetic",
+        "subscription_type": "COMMERCIAL",
+        "classification_source": "MANUAL_GOVERNANCE",
+        "classification_reference": "development:synthetic"
+      },
+      "primary_organisation_id": "01900000-0000-7000-8000-000000000001",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0003/current:v1",
+      "synthetic_extra": true
+    },
+    "valid": false
+  },
+  {
+    "name": "CurrentSubscription-revision-string",
+    "contract": "CurrentSubscription",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "product_id": "dev-subscriptions",
+      "status": "ACTIVE",
+      "authoritative_revision": "1",
+      "classification": {
+        "classification_id": "subcls_synthetic",
+        "subscription_type": "COMMERCIAL",
+        "classification_source": "MANUAL_GOVERNANCE",
+        "classification_reference": "development:synthetic"
+      },
+      "primary_organisation_id": "01900000-0000-7000-8000-000000000001",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0003/current:v1"
+    },
+    "valid": false
+  },
+  {
+    "name": "CommercialAuthorityRequest-valid",
+    "contract": "CommercialAuthorityRequest",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": 1,
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "operation_kind": "ENSURE_SUBSCRIPTION",
+      "provider_kind": "KILL_BILL"
+    },
+    "valid": true
+  },
+  {
+    "name": "CommercialAuthorityRequest-unknown-field",
+    "contract": "CommercialAuthorityRequest",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": 1,
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "operation_kind": "ENSURE_SUBSCRIPTION",
+      "provider_kind": "KILL_BILL",
+      "synthetic_extra": true
+    },
+    "valid": false
+  },
+  {
+    "name": "CommercialAuthorityRequest-revision-string",
+    "contract": "CommercialAuthorityRequest",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": "1",
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "operation_kind": "ENSURE_SUBSCRIPTION",
+      "provider_kind": "KILL_BILL"
+    },
+    "valid": false
+  },
+  {
+    "name": "CommercialAuthorityDecision-valid",
+    "contract": "CommercialAuthorityDecision",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": 1,
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "outcome": "DENIED",
+      "reason_code": "COMMERCIAL_TERMS_NOT_ATTESTED",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0015/financial-preflight:v1"
+    },
+    "valid": true
+  },
+  {
+    "name": "CommercialAuthorityDecision-unknown-field",
+    "contract": "CommercialAuthorityDecision",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": 1,
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "outcome": "DENIED",
+      "reason_code": "COMMERCIAL_TERMS_NOT_ATTESTED",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0015/financial-preflight:v1",
+      "synthetic_extra": true
+    },
+    "valid": false
+  },
+  {
+    "name": "CommercialAuthorityDecision-revision-string",
+    "contract": "CommercialAuthorityDecision",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": "1",
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "outcome": "DENIED",
+      "reason_code": "COMMERCIAL_TERMS_NOT_ATTESTED",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0015/financial-preflight:v1"
+    },
+    "valid": false
+  },
+  {
+    "name": "commercial-positive-authority-refused",
+    "contract": "CommercialAuthorityDecision",
+    "instance": {
+      "tenant_id": "tn_synthetic",
+      "product_subscription_id": "sub_synthetic",
+      "authoritative_revision": 1,
+      "operation_id": "01900000-0000-7000-8000-000000000001",
+      "outcome": "AUTHORISED",
+      "reason_code": "COMMERCIAL_TERMS_NOT_ATTESTED",
+      "evaluated_at": "2026-10-25T12:00:00Z",
+      "expires_at": "2026-10-25T12:00:03Z",
+      "policy_reference": "ADR-SHARED-011/ADR-BCP-017/ADR-SUB-0015/financial-preflight:v1"
+    },
+    "valid": false
   }
 ]

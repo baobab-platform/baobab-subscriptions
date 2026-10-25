@@ -11,7 +11,7 @@ import java.util.concurrent.Flow;
 /** Accumulate at most one small CP fact, cancelling before an oversized chunk
  * is copied. Completion means the WHOLE body arrived, so the caller's bounded
  * future wait also covers a server that trickles its body after the headers. */
-final class BoundedJsonBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
+public final class BoundedJsonBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
     private static final int LIMIT = 16384;
     private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     private final CompletableFuture<byte[]> result = new CompletableFuture<>();

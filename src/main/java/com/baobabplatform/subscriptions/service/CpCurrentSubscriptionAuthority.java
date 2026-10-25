@@ -2,6 +2,7 @@ package com.baobabplatform.subscriptions.service;
 
 import com.baobabplatform.subscriptions.domain.Projection;
 import com.baobabplatform.subscriptions.json.Json;
+import com.baobabplatform.subscriptions.contract.Contracts;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.ProviderOperation;
 import com.baobabplatform.subscriptions.provider.KillBillAdapter;
@@ -155,24 +156,38 @@ public final class CpCurrentSubscriptionAuthority implements ProviderWorkSchedul
                 || p.authoritativeRevision() < op.authoritativeRevision()
                 || !"KILL_BILL".equals(op.providerKind())
                 || p.provider().simulated() || !p.billingPolicy().billingRequired()) return null;
-        JsonNode result = exchange(prefix(p) + "/current", null);
-        if (!exactFields(result, CURRENT_FIELDS) || !fresh(result)
+        return snapshot(p.tenantId(), p.productSubscriptionId(), p.authoritativeRevision(),
+                p.productId(), p.subscriptionType(), p.classification());
+    }
+
+    private JsonNode snapshot(String tenant, String subscription, long revision, String product,
+            com.baobabplatform.subscriptions.domain.SubscriptionType type,
+            com.baobabplatform.subscriptions.domain.Classification expectedClassification) {
+        JsonNode result = exchange("/internal/subscriptions/v1/tenants/" + tenant + "/product-subscriptions/" + subscription + "/current", null);
+        if (!exactFields(result, CURRENT_FIELDS) || !Contracts.validEntry("CurrentSubscription", result) || !fresh(result)
                 || !SNAPSHOT_POLICY.equals(result.path("policy_reference").asText())
-                || !p.tenantId().equals(result.path("tenant_id").asText())
-                || !p.productSubscriptionId().equals(result.path("product_subscription_id").asText())
-                || !p.productId().equals(result.path("product_id").asText())
-                || result.path("authoritative_revision").asLong(-1) != p.authoritativeRevision()
+                || !tenant.equals(result.path("tenant_id").asText())
+                || !subscription.equals(result.path("product_subscription_id").asText())
+                || !product.equals(result.path("product_id").asText())
+                || result.path("authoritative_revision").asLong(-1) != revision
                 || !"ACTIVE".equals(result.path("status").asText())
                 || !result.path("primary_organisation_id").isTextual()
                 || result.path("primary_organisation_id").asText().isBlank()) return null;
         JsonNode classification = result.path("classification");
         if (!exactFields(classification, CLASSIFICATION_FIELDS)
-                || !"COMMERCIAL".equals(classification.path("subscription_type").asText())
-                || !p.classification().classificationId().equals(classification.path("classification_id").asText())
-                || !p.classification().classificationSource().equals(classification.path("classification_source").asText())
-                || !p.classification().classificationReference().equals(
+                || !type.name().equals(classification.path("subscription_type").asText())
+                || !expectedClassification.classificationId().equals(classification.path("classification_id").asText())
+                || !expectedClassification.classificationSource().equals(classification.path("classification_source").asText())
+                || !expectedClassification.classificationReference().equals(
                         classification.path("classification_reference").asText())) return null;
         return result;
+    }
+
+    /** Requires an ACTIVE exact CP tuple; says nothing about payer or INTERNAL eligibility. */
+    public boolean currentProjection(String tenant, String subscription, long revision, String product,
+            com.baobabplatform.subscriptions.domain.SubscriptionType type,
+            com.baobabplatform.subscriptions.domain.Classification classification) {
+        return snapshot(tenant, subscription, revision, product, type, classification) != null;
     }
 
     @Override public boolean permitsObservation(ProviderOperation op) {
@@ -193,9 +208,10 @@ public final class CpCurrentSubscriptionAuthority implements ProviderWorkSchedul
                     .put("operation_id",op.operationId().toString())
                     .put("operation_kind",op.operationKind())
                     .put("provider_kind",op.providerKind());
+            if (!Contracts.validEntry("CommercialAuthorityRequest", req)) return Optional.empty();
             JsonNode decision = exchange(prefix(p) + "/commercial-authority",
                     Json.mapper().writeValueAsBytes(req));
-            if (!exactFields(decision, DECISION_FIELDS) || !fresh(decision)
+            if (!exactFields(decision, DECISION_FIELDS) || !Contracts.validEntry("CommercialAuthorityDecision", decision) || !fresh(decision)
                     || !PREFLIGHT_POLICY.equals(decision.path("policy_reference").asText())
                     || !op.tenantId().equals(decision.path("tenant_id").asText())
                     || !p.productSubscriptionId().equals(decision.path("product_subscription_id").asText())
