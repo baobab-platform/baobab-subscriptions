@@ -134,6 +134,22 @@ class ProviderReconciliationTest {
         assertThrows(IllegalStateException.class,
                 () -> svc.reconcile(tenant, op.operationId(), "worker-b", Duration.ofSeconds(2)));
 
+        // A second CP commercial revision may be projected and PREPARED,
+        // but must not dispatch while the first could already have created a
+        // remote subscription. The older SENT operation remains observable.
+        String revisedBody = body.replace("\\"authoritative_revision\\":1", "\\"authoritative_revision\\":2")
+                .replace("subcls_01k9acmecommercial", "subcls_01k9acmecommercialv2");
+        CallContext revisedContext = new CallContext("baobab-cp-workload", "synthetic-operator",
+                context.idempotencyKey() + "-revision2", context.correlationId());
+        JsonNode revisedProjection = billing.ensure(revisedContext,
+                revisedBody.getBytes(StandardCharsets.UTF_8)).body();
+        assertEquals(2, revisedProjection.path("authoritative_revision").asLong());
+        ProviderOperation replacement = store.transact(tx -> tx.providerOperationForKey(
+                tenant, "KILLBILL", "ENSURE_SUBSCRIPTION", revisedContext.idempotencyKey())).orElseThrow();
+        assertEquals(ProviderOperation.State.PREPARED, replacement.state());
+        assertThrows(IllegalStateException.class,
+                () -> svc.claimForDispatch(tenant, replacement.operationId(), "worker-next", Duration.ofSeconds(2)));
+
         // Lost response: stale dispatch owner cannot assert an outcome after expiry.
         clock.advance(Duration.ofSeconds(3));
         assertThrows(IllegalStateException.class, () -> svc.recordDispatchOutcome(
@@ -166,6 +182,11 @@ class ProviderReconciliationTest {
         assertEquals("PENDING_CONFIGURATION", finalProjection.billingState().name());
         assertThrows(IllegalStateException.class,
                 () -> svc.reconcile(tenant, op.operationId(), "worker-d", Duration.ofSeconds(2)));
+        ProviderOperation newerClaim = svc.claimForDispatch(
+                tenant, replacement.operationId(), "worker-next", Duration.ofSeconds(2));
+        assertEquals(ProviderOperation.State.SENT, newerClaim.state(),
+                "a newer intent may dispatch only after earlier uncertainty is reconciled");
+        assertEquals(2, observer.observations.get(), "claiming a lease is not a network request");
         assertNotNull(store.audit(tenant));
         assertTrue(store.audit(tenant).stream()
                         .anyMatch(e -> e.operation().equals("provider_operation.observation_result")),
