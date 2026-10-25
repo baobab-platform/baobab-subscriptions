@@ -38,7 +38,7 @@ public interface CpSubscriptionLifecycleInbox {
     }
 
     /** Durably acknowledge but do not apply. The client ID MUST come from a verified IAM token. */
-    Receipt receive(byte[] raw, String authenticatedClientId);
+    Receipt receiveSubscriptionEvent(byte[] raw, String authenticatedClientId);
 
     /** Pending notifications for a specific tenant only; no cross-tenant enumerations. */
     java.util.List<Notification> pending(String tenantId, int limit);
