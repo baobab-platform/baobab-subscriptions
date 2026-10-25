@@ -169,6 +169,24 @@ public final class InMemoryBillingStore implements BillingStore {
         }
 
         @Override
+        public List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            Map<UUID, ProviderOperation> merged = new HashMap<>(providerOperations);
+            merged.putAll(newOperations);
+            return merged.values().stream().filter(op ->
+                    op.tenantId().equals(tenantId)
+                    && op.providerKind().equals(providerKind)
+                    && op.billingSubscriptionId().equals(billingSubscriptionId)
+                    && op.state() != ProviderOperation.State.CONVERGED
+                    && op.state() != ProviderOperation.State.ALREADY_CONVERGED
+                    && op.state() != ProviderOperation.State.RECONCILED
+                    && op.state() != ProviderOperation.State.SUPERSEDED)
+                    .sorted(java.util.Comparator.comparing(ProviderOperation::createdAt)
+                            .thenComparing(ProviderOperation::operationId))
+                    .toList();
+        }
+
+        @Override
         public void insertProviderOperation(ProviderOperation operation) {
             if (projection(operation.tenantId(), operation.billingSubscriptionId()).isEmpty()) {
                 throw new IllegalArgumentException("no tenant-owned projection for provider operation");
