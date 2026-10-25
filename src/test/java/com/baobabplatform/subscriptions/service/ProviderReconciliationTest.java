@@ -137,7 +137,7 @@ class ProviderReconciliationTest {
         // A second CP commercial revision may be projected and PREPARED,
         // but must not dispatch while the first could already have created a
         // remote subscription. The older SENT operation remains observable.
-        String revisedBody = body.replace("\\"authoritative_revision\\":1", "\\"authoritative_revision\\":2")
+        String revisedBody = body.replace(":1,", ":2,")
                 .replace("subcls_01k9acmecommercial", "subcls_01k9acmecommercialv2");
         CallContext revisedContext = new CallContext("baobab-cp-workload", "synthetic-operator",
                 context.idempotencyKey() + "-revision2", context.correlationId());
