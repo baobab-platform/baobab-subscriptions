@@ -31,6 +31,8 @@ public final class WorkloadAuthenticator {
 
     private final ConfigurableJWTProcessor<SecurityContext> processor;
     private final Set<String> allowedClients;
+    private final String audience;
+    private CurrentTokenStatus currentStatus;
 
     /** The authenticated workload. */
     public record Caller(String subject, String clientId, Set<String> scopes, String tokenId) {
@@ -41,6 +43,7 @@ public final class WorkloadAuthenticator {
 
     public WorkloadAuthenticator(URI issuer, JWKSource<SecurityContext> keys, String audience, Set<String> allowedClients) {
         this.allowedClients = Set.copyOf(allowedClients);
+        this.audience = audience;
         DefaultJWTProcessor<SecurityContext> p = new DefaultJWTProcessor<>();
         p.setJWSKeySelector(new JWSVerificationKeySelector<>(
                 Set.of(JWSAlgorithm.RS256, JWSAlgorithm.PS256, JWSAlgorithm.ES256), keys));
@@ -58,6 +61,12 @@ public final class WorkloadAuthenticator {
         } catch (MalformedURLException e) {
             throw new IllegalArgumentException("WORKLOAD_JWKS_URI is not a URL", e);
         }
+    }
+
+    /** Configure per-request issuer status before publishing this authenticator. */
+    public WorkloadAuthenticator withCurrentStatus(CurrentTokenStatus status) {
+        this.currentStatus = java.util.Objects.requireNonNull(status);
+        return this;
     }
 
     /** The caller behind an Authorization header, holding requiredScope. */
@@ -86,6 +95,10 @@ public final class WorkloadAuthenticator {
                 : Arrays.stream(scope.split(" ")).filter(s -> !s.isBlank()).collect(Collectors.toCollection(HashSet::new));
         if (!"workload".equals(actorType) || client == null || !allowedClients.contains(client) || !scopes.contains(requiredScope)) {
             throw new AuthException(403, "AUTHORIZATION_DENIED", "the authenticated principal lacks required authority");
+        }
+        if (currentStatus != null && !currentStatus.active(authorization.substring(7).trim(),
+                claims.getSubject(), client, audience, Set.copyOf(scopes))) {
+            throw new AuthException(401, "AUTH_TOKEN_NOT_CURRENT", "current issuer status is unavailable or inactive");
         }
         return new Caller(claims.getSubject(), client, Set.copyOf(scopes), claims.getJWTID());
     }

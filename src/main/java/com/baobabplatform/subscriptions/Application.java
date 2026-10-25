@@ -75,11 +75,32 @@ public final class Application {
             }
             internalAuthority = CpInternalAuthorityGate.create(URI.create(endpoint), Path.of(credentialFile));
         }
+        com.baobabplatform.subscriptions.service.CurrentProjectionAuthority projectionAuthority = null;
+        if ("true".equals(System.getenv("CP_SUBSCRIPTION_PROJECTION_AUTHORITY_ENABLED"))) {
+            String endpoint = System.getenv("CP_SUBSCRIPTION_CURRENT_AUTHORITY_BASE_URL");
+            String credential = System.getenv("CP_SUBSCRIPTION_CURRENT_AUTHORITY_TOKEN_FILE");
+            if (config.environment() == Config.Environment.PRODUCTION || endpoint == null || endpoint.isBlank()
+                    || credential == null || credential.isBlank()) {
+                throw new ConfigException("projection authority requires explicit nonproduction CP identity");
+            }
+            var reader = CpCurrentSubscriptionAuthority.create(store,URI.create(endpoint),Path.of(credential));
+            projectionAuthority = reader::currentProjection;
+        }
         BillingService billing = new BillingService(store, provider, PaymentsPort.notConfigured(),
-                policies, Clock.systemUTC(), internalAuthority);
+                policies, Clock.systemUTC(), internalAuthority, projectionAuthority);
         WorkloadAuthenticator auth = WorkloadAuthenticator.remote(config.workloadIssuer(), config.workloadJwksUri(),
                 config.workloadAudience(), config.allowedClients());
         String environment = config.environment().name().toLowerCase(Locale.ROOT);
+        String introspection = System.getenv("WORKLOAD_INTROSPECTION_ENDPOINT");
+        if (introspection != null && !introspection.isBlank()) {
+            String introspectionClient = System.getenv("WORKLOAD_INTROSPECTION_CLIENT_ID");
+            String introspectionSecret = System.getenv("WORKLOAD_INTROSPECTION_SECRET_FILE");
+            if (introspectionSecret == null || introspectionSecret.isBlank()) {
+                throw new ConfigException("current issuer status requires an explicit credential file");
+            }
+            auth.withCurrentStatus(com.baobabplatform.subscriptions.auth.CurrentTokenStatus.remote(
+                    URI.create(introspection), introspectionClient, Path.of(introspectionSecret)));
+        }
         FoundingEventInbox foundingInbox = null;
         String controlPlaneClient = null;
         if ("true".equals(System.getenv("PEO_FOUNDING_EVENT_RECEIVER_ENABLED"))) {
