@@ -60,6 +60,13 @@ public interface BillingStore extends AutoCloseable {
         Optional<ProviderOperation> providerOperationForKey(
                 String tenantId, String providerKind, String operationKind, String key);
 
+        /**
+         * Unresolved operations against the same tenant/provider/subscription,
+         * including older CP revisions. Never scope only by operation key.
+         */
+        List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId);
+
         void insertProviderOperation(ProviderOperation operation);
 
         /**
