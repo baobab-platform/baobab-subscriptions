@@ -300,7 +300,7 @@ public final class HttpApi implements AutoCloseable {
         // The engine can serve; that says nothing about money. Commercial billing
         // stays unavailable until a real provider and payment path exist.
         body.put("billing_provider", Map.of("kind", provider.kind(), "simulated", provider.simulated()));
-        body.put("commercial_billing", provider.simulated() ? "NOT_CONFIGURED" : "CONFIGURED");
+        body.put("commercial_billing", provider.simulated() ? "NOT_CONFIGURED" : "NOT_CERTIFIED");
         body.put("environment", environment);
         return send(exchange, storeUp && providerUp ? 200 : 503, body, correlationId, false, "application/json");
     }

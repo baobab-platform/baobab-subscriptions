@@ -53,10 +53,17 @@ class ConfigTest {
     }
 
     @Test
-    void onlyTheTemporaryProviderExists() {
+    void killBillRequiresExplicitPgAndTenantRegistryAndRejectsProduction() {
         Map<String, String> env = base("development");
         env.put("BILLING_PROVIDER", "killbill");
-        assertTrue(assertThrows(ConfigException.class, () -> Config.fromEnvironment(env)).getMessage().contains("not implemented"));
+        assertTrue(assertThrows(ConfigException.class, () -> Config.fromEnvironment(env))
+                .getMessage().contains("KILLBILL_TENANTS_FILE"));
+        env.put("DATABASE_URL", "jdbc:postgresql://127.0.0.1:5432/test");
+        env.put("KILLBILL_TENANTS_FILE", "/run/secrets/tenant-registry.json");
+        assertEquals("killbill", Config.fromEnvironment(env).billingProvider());
+        env.put("BAOBAB_ENVIRONMENT", "production");
+        assertTrue(assertThrows(ConfigException.class, () -> Config.fromEnvironment(env))
+                .getMessage().contains("connected provider/CP/Payments acceptance"));
     }
 
     @Test
