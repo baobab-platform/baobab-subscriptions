@@ -207,7 +207,12 @@ public final class BillingService {
             configured = false;
             blockers.add(BillingBlocker.PRICING_CONFIGURATION_MISSING);
             blockers.add(BillingBlocker.BILLING_ACCOUNT_MISSING);
-            providerReady = !p.provider().simulated();
+            // A configured adapter alone is not evidence of a reconciled,
+            // usable external resource; never call provider IO in this
+            // transaction or claim provider readiness from a class name.
+            providerReady = !p.provider().simulated()
+                    && p.provider().providerReference() != null
+                    && provider.capabilities().subscriptionObservation();
             if (!providerReady) {
                 blockers.add(BillingBlocker.BILLING_PROVIDER_NOT_CONFIGURED);
             }
