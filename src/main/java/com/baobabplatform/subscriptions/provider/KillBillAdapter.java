@@ -87,7 +87,7 @@ public final class KillBillAdapter implements BillingProvider, AutoCloseable {
                 .followRedirects(HttpClient.Redirect.NEVER).build();
     }
 
-    @Override public String kind() { return "KILLBILL"; }
+    @Override public String kind() { return "KILL_BILL"; }
     @Override public boolean simulated() { return false; }
     @Override public ProviderCapabilities capabilities() {
         // No automatic account, usage or payment operations are certified.
