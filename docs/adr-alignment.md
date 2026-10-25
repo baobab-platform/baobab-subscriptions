@@ -29,6 +29,20 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 | 0017 | Observability and billing correctness | Partial | Liveness and readiness endpoints that report commercial readiness honestly; JSON logs with correlation IDs | Metrics with bounded labels, SLOs, pipeline and reconciliation health, alerts |
 | 0018 | Availability, backup, DR | Partial | PostgreSQL persistence with versioned migrations; a stateless service; in-memory state refused in staging and production | HA topology, backups and PITR, RPO/RTO, restore drills |
 
+## Kill Bill adapter/worker scaffold — 25 October 2026
+
+ADR-SUB-0015, 0016 and 0017 **remain Partial**. The provider-specific
+REST anti-corruption adapter, deterministic external-key read-back,
+single-POST transport, nonproduction explicit tenant credential registry,
+IAM-validated bounded worker, durable V9 retry/lease and tenant monitoring
+are implemented and under CI. The application runtime deliberately supplies
+an unavailable CP authoritative commercial decision port and disables
+dispatch; local REST fixtures do not qualify financial execution. Real
+Kill Bill 0.24.22/PostgreSQL 17, current CP state read, consented
+pricing/payer, Payments and ERP evidence are still mandatory.
+
+See [Kill Bill qualification runbook](development/killbill-qualification-and-worker.md).
+
 ## Provider custody increment — 25 October 2026
 
 ADR-SUB-0003, 0014, 0015 and 0016 remain **Partial**, but provider
