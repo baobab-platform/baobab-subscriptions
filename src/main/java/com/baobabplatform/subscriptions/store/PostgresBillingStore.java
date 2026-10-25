@@ -29,7 +29,8 @@ import java.util.UUID;
 public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
     private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
             "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql",
-            "db/V5__provider_operations_and_mappings.sql"};
+            "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql",
+            "db/V7__provider_supersession.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -342,6 +343,167 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
                 q.setString(5, u.sourceReference());
                 q.setString(6, json(u));
                 q.setTimestamp(7, Timestamp.from(u.recordedAt()));
+                q.executeUpdate();
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+
+        private static ProviderOperation readProviderOperation(ResultSet rs) throws SQLException {
+            return new ProviderOperation((UUID) rs.getObject("operation_id"),
+                    rs.getString("tenant_id"), rs.getString("billing_subscription_id"),
+                    rs.getString("provider_kind"), rs.getString("operation_kind"),
+                    rs.getString("idempotency_key"), rs.getString("request_sha256"),
+                    rs.getLong("authoritative_revision"),
+                    ProviderOperation.State.valueOf(rs.getString("state")),
+                    rs.getString("lease_owner"), rs.getLong("lease_epoch"),
+                    rs.getTimestamp("lease_expires_at") == null ? null
+                            : rs.getTimestamp("lease_expires_at").toInstant(),
+                    rs.getString("reason_code"), rs.getTimestamp("created_at").toInstant(),
+                    rs.getTimestamp("updated_at").toInstant());
+        }
+
+        @Override
+        public Optional<ProviderOperation> providerOperation(String tenantId, UUID operationId) {
+            try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
+                    + "WHERE tenant_id = ? AND operation_id = ?")) {
+                q.setString(1, tenantId);
+                q.setObject(2, operationId);
+                try (ResultSet rs = q.executeQuery()) {
+                    return rs.next() ? Optional.of(readProviderOperation(rs)) : Optional.empty();
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public Optional<ProviderOperation> providerOperationForKey(
+                String tenantId, String providerKind, String operationKind, String key) {
+            try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
+                    + "WHERE tenant_id = ? AND provider_kind = ? AND operation_kind = ? "
+                    + "AND idempotency_key = ?")) {
+                q.setString(1, tenantId);
+                q.setString(2, providerKind);
+                q.setString(3, operationKind);
+                q.setString(4, key);
+                try (ResultSet rs = q.executeQuery()) {
+                    return rs.next() ? Optional.of(readProviderOperation(rs)) : Optional.empty();
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
+                    + "WHERE tenant_id = ? AND provider_kind = ? AND billing_subscription_id = ? "
+                    + "AND state NOT IN ('CONVERGED', 'ALREADY_CONVERGED', 'RECONCILED', 'SUPERSEDED') "
+                    + "ORDER BY created_at, operation_id")) {
+                q.setString(1, tenantId);
+                q.setString(2, providerKind);
+                q.setString(3, billingSubscriptionId);
+                try (ResultSet rs = q.executeQuery()) {
+                    List<ProviderOperation> unresolved = new ArrayList<>();
+                    while (rs.next()) {
+                        unresolved.add(readProviderOperation(rs));
+                    }
+                    return unresolved;
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public void insertProviderOperation(ProviderOperation op) {
+            try (PreparedStatement q = c.prepareStatement("INSERT INTO billing.provider_operation "
+                    + "(operation_id, tenant_id, billing_subscription_id, provider_kind, operation_kind, "
+                    + "idempotency_key, request_sha256, authoritative_revision, state, lease_owner, "
+                    + "lease_epoch, lease_expires_at, reason_code, created_at, updated_at) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+                q.setObject(1, op.operationId());
+                q.setString(2, op.tenantId());
+                q.setString(3, op.billingSubscriptionId());
+                q.setString(4, op.providerKind());
+                q.setString(5, op.operationKind());
+                q.setString(6, op.idempotencyKey());
+                q.setString(7, op.requestSha256());
+                q.setLong(8, op.authoritativeRevision());
+                q.setString(9, op.state().name());
+                q.setString(10, op.leaseOwner());
+                q.setLong(11, op.leaseEpoch());
+                q.setTimestamp(12, op.leaseExpiresAt() == null ? null : Timestamp.from(op.leaseExpiresAt()));
+                q.setString(13, op.reasonCode());
+                q.setTimestamp(14, Timestamp.from(op.createdAt()));
+                q.setTimestamp(15, Timestamp.from(op.updatedAt()));
+                q.executeUpdate();
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public void updateProviderOperation(ProviderOperation op, ProviderOperation.State oldState, long oldEpoch) {
+            try (PreparedStatement q = c.prepareStatement("UPDATE billing.provider_operation SET "
+                    + "state = ?, lease_owner = ?, lease_epoch = ?, lease_expires_at = ?, "
+                    + "reason_code = ?, updated_at = ? WHERE tenant_id = ? AND operation_id = ? "
+                    + "AND state = ? AND lease_epoch = ?")) {
+                q.setString(1, op.state().name());
+                q.setString(2, op.leaseOwner());
+                q.setLong(3, op.leaseEpoch());
+                q.setTimestamp(4, op.leaseExpiresAt() == null ? null : Timestamp.from(op.leaseExpiresAt()));
+                q.setString(5, op.reasonCode());
+                q.setTimestamp(6, Timestamp.from(op.updatedAt()));
+                q.setString(7, op.tenantId());
+                q.setObject(8, op.operationId());
+                q.setString(9, oldState.name());
+                q.setLong(10, oldEpoch);
+                if (q.executeUpdate() != 1) {
+                    throw new ConflictException("stale provider operation lease", null);
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public Optional<ProviderMapping> providerMapping(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            try (PreparedStatement q = c.prepareStatement("SELECT mapping_id, provider_resource_id, "
+                    + "created_at, last_verified_at FROM billing.provider_resource_mapping "
+                    + "WHERE tenant_id = ? AND provider_kind = ? "
+                    + "AND baobab_resource_type = 'BILLING_SUBSCRIPTION' AND baobab_resource_id = ?")) {
+                q.setString(1, tenantId);
+                q.setString(2, providerKind);
+                q.setString(3, billingSubscriptionId);
+                try (ResultSet rs = q.executeQuery()) {
+                    return rs.next() ? Optional.of(new ProviderMapping((UUID) rs.getObject(1),
+                            tenantId, providerKind, billingSubscriptionId,
+                            rs.getString(2), rs.getTimestamp(3).toInstant(),
+                            rs.getTimestamp(4) == null ? null : rs.getTimestamp(4).toInstant())) : Optional.empty();
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public void insertProviderMapping(ProviderMapping mapping) {
+            try (PreparedStatement q = c.prepareStatement("INSERT INTO billing.provider_resource_mapping "
+                    + "(mapping_id, tenant_id, provider_kind, baobab_resource_type, baobab_resource_id, "
+                    + "provider_resource_type, provider_resource_id, created_at, last_verified_at) "
+                    + "VALUES (?, ?, ?, 'BILLING_SUBSCRIPTION', ?, 'SUBSCRIPTION', ?, ?, ?)")) {
+                q.setObject(1, mapping.mappingId());
+                q.setString(2, mapping.tenantId());
+                q.setString(3, mapping.providerKind());
+                q.setString(4, mapping.billingSubscriptionId());
+                q.setString(5, mapping.providerResourceId());
+                q.setTimestamp(6, Timestamp.from(mapping.createdAt()));
+                q.setTimestamp(7, mapping.lastVerifiedAt() == null ? null : Timestamp.from(mapping.lastVerifiedAt()));
                 q.executeUpdate();
             } catch (SQLException e) {
                 throw fail(e);

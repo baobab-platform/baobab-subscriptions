@@ -29,6 +29,22 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 | 0017 | Observability and billing correctness | Partial | Liveness and readiness endpoints that report commercial readiness honestly; JSON logs with correlation IDs | Metrics with bounded labels, SLOs, pipeline and reconciliation health, alerts |
 | 0018 | Availability, backup, DR | Partial | PostgreSQL persistence with versioned migrations; a stateless service; in-memory state refused in staging and production | HA topology, backups and PITR, RPO/RTO, restore drills |
 
+## Provider custody increment — 25 October 2026
+
+ADR-SUB-0003, 0014, 0015 and 0016 remain **Partial**, but provider
+custody now has real transaction-backed operations: PostgreSQL V5/V6 and a
+matching in-memory store implement tenant-scoped PREPARED journaling,
+lease-epoch fencing, old-revision uncertainty/supersession guards, provider reference uniqueness, a fail-closed UNKNOWN_OUTCOME
+and read-only observational reconciliation, with same-transaction audit.
+The BillingService prepares genuine-provider priced intent only after its
+CP-governed billing projection is persisted. No Kill Bill dispatch, new
+external mutation endpoint, automatic scheduler or monetary activation exists.
+
+See [operator and implementation notes](development/provider-operation-reconciliation.md).
+A successful test observer is not a qualified Kill Bill deployment; pricing,
+payer, payment-path, current identity, provider/DB compatibility, eventual
+commercial->INTERNAL cancellation and native billing acceptance remain open.
+
 ## P0-04A follow-up — 13 October 2026
 
 Shared `a9c53087` is now embedded with complete inventory/provenance. Current

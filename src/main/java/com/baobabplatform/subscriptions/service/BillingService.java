@@ -76,6 +76,7 @@ public final class BillingService {
     private final BillingPolicies policies;
     private final Clock clock;
     private final InternalAuthorityGate internalAuthority;
+    private final ProviderReconciliationService providerOperations;
 
     /** An outcome: the HTTP status and the contract body, and whether it replays an earlier request. */
     public record Result(int status, JsonNode body, boolean replayed) {
@@ -93,6 +94,16 @@ public final class BillingService {
         this.policies = Objects.requireNonNull(policies);
         this.clock = Objects.requireNonNull(clock);
         this.internalAuthority = Objects.requireNonNull(internalAuthority);
+        this.providerOperations = new ProviderReconciliationService(store, provider, clock);
+    }
+
+    /**
+     * Internal provider operation custody. There is deliberately no HTTP
+     * handler for dispatch or reconciliation until a CP/IAM-governed provider
+     * workload is qualified. Calling this accessor does not move money.
+     */
+    public ProviderReconciliationService providerOperations() {
+        return providerOperations;
     }
 
     // Mandatory at each INTERNAL write, *before* the idempotent replay lookup,
@@ -196,7 +207,12 @@ public final class BillingService {
             configured = false;
             blockers.add(BillingBlocker.PRICING_CONFIGURATION_MISSING);
             blockers.add(BillingBlocker.BILLING_ACCOUNT_MISSING);
-            providerReady = !p.provider().simulated();
+            // A configured adapter alone is not evidence of a reconciled,
+            // usable external resource; never call provider IO in this
+            // transaction or claim provider readiness from a class name.
+            providerReady = !p.provider().simulated()
+                    && p.provider().providerReference() != null
+                    && provider.capabilities().subscriptionObservation();
             if (!providerReady) {
                 blockers.add(BillingBlocker.BILLING_PROVIDER_NOT_CONFIGURED);
             }
@@ -248,13 +264,19 @@ public final class BillingService {
                 // The temporary provider completes provisioning synchronously; a
                 // real provider would leave the projection PROVISIONING until it
                 // observes the outcome (ADR-SUB-0003 section 7).
-                String reference = provider.ensureSubscription(draft);
+                // No real provider may be invoked inside the database transaction.
+                // The real-provider path records PREPARED intent below instead.
+                String reference = provider.simulated() ? provider.ensureSubscription(draft) : null;
                 Projection provisioned = new Projection(id, draft.tenantId(), draft.productSubscriptionId(), draft.authoritativeRevision(),
                         draft.productId(), draft.platformAccountId(), draft.legalEntityId(), draft.subscriptionType(),
                         draft.classification(), draft.billingPolicy(), draft.billingState(), draft.operationalCondition(),
                         draft.readiness(), new ProviderRef(provider.kind(), provider.simulated(), reference), 1, at, at);
                 Projection created = settle(provisioned, policy, BillingState.ACTIVE, req.authoritativeRevision(), 1, at);
                 tx.insertProjection(created);
+                if (!provider.simulated() && policy.billingRequired()) {
+                    providerOperations.prepare(tx, created, "ENSURE_SUBSCRIPTION",
+                            ctx.idempotencyKey(), hash(node), at);
+                }
                 ObjectNode data = Json.mapper().createObjectNode()
                         .put("billing_subscription_id", id)
                         .put("product_subscription_id", created.productSubscriptionId())
@@ -287,6 +309,13 @@ public final class BillingService {
                 throw new BillingException(409, "CLASSIFICATION_REVISION_CONFLICT",
                         "different terms were sent for a revision the projection already reflects", false);
             }
+            // A previously priced provider resource may continue billing after
+            // a commercial -> INTERNAL transition. Until safe cancellation is
+            // wired, do not silently assert that the resource has stopped.
+            if (!provider.simulated() && current.billingPolicy().billingRequired() && !policy.billingRequired()) {
+                throw new BillingException(409, "PROVIDER_CANCELLATION_REQUIRED",
+                        "provider termination and reconciliation must precede zero-charge reclassification", false);
+            }
             // A reclassification or changed commercial context: updated in place, never a new identity.
             Projection changed = new Projection(current.billingSubscriptionId(), current.tenantId(), current.productSubscriptionId(),
                     req.authoritativeRevision(), current.productId(), req.platformAccountId(), req.legalEntityId(), req.subscriptionType(),
@@ -295,6 +324,10 @@ public final class BillingService {
             BillingState lifecycle = current.billingState() == BillingState.SUSPENDED ? BillingState.SUSPENDED : BillingState.ACTIVE;
             Projection updated = settle(changed, policy, lifecycle, req.authoritativeRevision(), current.version() + 1, at);
             tx.updateProjection(updated, current.version());
+            if (!provider.simulated() && policy.billingRequired()) {
+                providerOperations.prepare(tx, updated, "ENSURE_SUBSCRIPTION",
+                        ctx.idempotencyKey(), hash(node), at);
+            }
             tx.appendAudit(audit(ctx, updated, current.subscriptionType() == req.subscriptionType()
                     ? "billing_projection.terms_changed" : "billing_projection.reclassified", current,
                     current.subscriptionType() + " -> " + req.subscriptionType() + " by classification "
@@ -353,7 +386,13 @@ public final class BillingService {
             if (current.billingState() == BillingState.SUSPENDED) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
-            provider.suspend(current);
+            if (!provider.simulated() && current.billingPolicy().billingRequired()) {
+                throw new BillingException(409, "PROVIDER_EXECUTION_NOT_ENABLED",
+                        "external billing suspension requires qualified provider execution", false);
+            }
+            if (provider.simulated()) {
+                provider.suspend(current);
+            }
             return transition(tx, ctx, current, req, at, BillingState.SUSPENDED, SUSPENDED, "suspended_at", "billing_projection.suspended");
         });
     }
@@ -371,6 +410,10 @@ public final class BillingService {
             if (current.billingState() != BillingState.SUSPENDED) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
+            if (!provider.simulated() && current.billingPolicy().billingRequired()) {
+                throw new BillingException(409, "PROVIDER_EXECUTION_NOT_ENABLED",
+                        "external billing resumption requires qualified provider execution", false);
+            }
             return transition(tx, ctx, current, req, at, BillingState.ACTIVE, RESUMED, "resumed_at", "billing_projection.resumed");
         });
     }
@@ -385,7 +428,13 @@ public final class BillingService {
             if (current.billingState().terminal()) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
-            provider.cancel(current);
+            if (!provider.simulated() && current.billingPolicy().billingRequired()) {
+                throw new BillingException(409, "PROVIDER_EXECUTION_NOT_ENABLED",
+                        "external billing cancellation requires qualified provider execution", false);
+            }
+            if (provider.simulated()) {
+                provider.cancel(current);
+            }
             return transition(tx, ctx, current, req, at, BillingState.TERMINATED, TERMINATED, "terminated_at",
                     "billing_projection.terminated");
         });
@@ -411,7 +460,11 @@ public final class BillingService {
             boolean billable = projection.billingPolicy().billingRequired() && projection.billingPolicy().chargesMoney();
             UsageRecord usage = new UsageRecord(Ids.usageRecordId(), billingSubscriptionId, projection.productSubscriptionId(),
                     req.tenantId(), req.metricKey(), req.quantity(), req.unit(), req.occurredAt(), at, req.sourceReference(), billable);
-            provider.recordUsage(projection, usage);
+            // Local metering remains independent; unqualified real-provider
+            // usage delivery is not attempted inside the database transaction.
+            if (provider.simulated()) {
+                provider.recordUsage(projection, usage);
+            }
             tx.insertUsage(usage);
             tx.appendEvent(event(USAGE_RECORDED, projection, Json.mapper().createObjectNode()
                     .put("usage_record_id", usage.usageRecordId())

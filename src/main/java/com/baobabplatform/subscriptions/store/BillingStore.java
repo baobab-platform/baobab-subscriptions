@@ -3,6 +3,7 @@ package com.baobabplatform.subscriptions.store;
 import com.baobabplatform.subscriptions.domain.Projection;
 import com.baobabplatform.subscriptions.domain.UsageRecord;
 import java.util.List;
+import java.util.UUID;
 import java.util.Optional;
 
 /**
@@ -52,6 +53,32 @@ public interface BillingStore extends AutoCloseable {
         Optional<UsageRecord> usageBySource(String tenantId, String billingSubscriptionId, String metricKey, String sourceReference);
 
         void insertUsage(UsageRecord usage);
+
+        /** Tenant-scoped durable provider journal (never Control Plane authority). */
+        Optional<ProviderOperation> providerOperation(String tenantId, UUID operationId);
+
+        Optional<ProviderOperation> providerOperationForKey(
+                String tenantId, String providerKind, String operationKind, String key);
+
+        /**
+         * Unresolved operations against the same tenant/provider/subscription,
+         * including older CP revisions. Never scope only by operation key.
+         */
+        List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId);
+
+        void insertProviderOperation(ProviderOperation operation);
+
+        /**
+         * Compare-and-swap state AND lease epoch, preventing an old worker from
+         * acknowledging or reclassifying another worker's leased operation.
+         */
+        void updateProviderOperation(ProviderOperation next, ProviderOperation.State oldState, long oldEpoch);
+
+        Optional<ProviderMapping> providerMapping(String tenantId, String providerKind, String billingSubscriptionId);
+
+        /** Durable uniqueness; a second provider ID for the same resource is a conflict. */
+        void insertProviderMapping(ProviderMapping mapping);
 
         void appendEvent(OutboxEvent event);
 

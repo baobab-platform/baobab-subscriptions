@@ -23,5 +23,25 @@ public interface BillingProvider {
 
     void recordUsage(Projection projection, UsageRecord usage);
 
+    /**
+     * Supported provider features are explicit. A simulated or unfinished
+     * adapter must never claim observational or monetary capabilities.
+     */
+    default ProviderCapabilities capabilities() {
+        return ProviderCapabilities.none();
+    }
+
+    /**
+     * Read-only observation: an adapter must NOT create/cancel/charge during
+     * reconciliation. An unimplemented observer preserves UNKNOWN_OUTCOME.
+     */
+    default ProviderOutcome observeSubscription(Projection projection, ProviderOperationIntent intent) {
+        // Even adapters without observation support reject malformed inputs;
+        // no null intent may be confused with a safe provider read-back.
+        java.util.Objects.requireNonNull(projection, "projection");
+        java.util.Objects.requireNonNull(intent, "intent");
+        return ProviderOutcome.failure(ProviderOutcome.Status.UNKNOWN_OUTCOME, "OBSERVATION_NOT_SUPPORTED");
+    }
+
     boolean healthy();
 }

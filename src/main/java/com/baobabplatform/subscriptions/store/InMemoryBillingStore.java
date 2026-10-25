@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -23,6 +24,10 @@ public final class InMemoryBillingStore implements BillingStore {
     private final Map<String, UsageRecord> usageBySource = new LinkedHashMap<>();
     private final List<OutboxEvent> events = new ArrayList<>();
     private final List<AuditRecord> audit = new ArrayList<>();
+    private final Map<UUID, ProviderOperation> providerOperations = new HashMap<>();
+    private final Map<String, UUID> providerOperationKeys = new HashMap<>();
+    private final Map<String, ProviderMapping> providerMappings = new HashMap<>();
+    private final Map<String, String> providerNativeIds = new HashMap<>();
 
     private static String key(String... parts) {
         return String.join("\u0000", parts);
@@ -78,6 +83,10 @@ public final class InMemoryBillingStore implements BillingStore {
         private final Map<String, UsageRecord> newUsage = new LinkedHashMap<>();
         private final List<OutboxEvent> newEvents = new ArrayList<>();
         private final List<AuditRecord> newAudit = new ArrayList<>();
+        private final Map<UUID, ProviderOperation> newOperations = new HashMap<>();
+        private final Map<String, UUID> newOperationKeys = new HashMap<>();
+        private final Map<String, ProviderMapping> newMappings = new HashMap<>();
+        private final Map<String, String> newNativeIds = new HashMap<>();
 
         @Override
         public Optional<IdempotencyRecord> idempotency(String tenantId, String operation, String key) {
@@ -145,6 +154,90 @@ public final class InMemoryBillingStore implements BillingStore {
         }
 
         @Override
+        public Optional<ProviderOperation> providerOperation(String tenantId, UUID operationId) {
+            ProviderOperation operation = newOperations.getOrDefault(operationId, providerOperations.get(operationId));
+            return operation != null && operation.tenantId().equals(tenantId)
+                    ? Optional.of(operation) : Optional.empty();
+        }
+
+        @Override
+        public Optional<ProviderOperation> providerOperationForKey(
+                String tenantId, String providerKind, String operationKind, String keyValue) {
+            String k = key(tenantId, providerKind, operationKind, keyValue);
+            UUID id = newOperationKeys.getOrDefault(k, providerOperationKeys.get(k));
+            return id == null ? Optional.empty() : providerOperation(tenantId, id);
+        }
+
+        @Override
+        public List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            Map<UUID, ProviderOperation> merged = new HashMap<>(providerOperations);
+            merged.putAll(newOperations);
+            return merged.values().stream().filter(op ->
+                    op.tenantId().equals(tenantId)
+                    && op.providerKind().equals(providerKind)
+                    && op.billingSubscriptionId().equals(billingSubscriptionId)
+                    && op.state() != ProviderOperation.State.CONVERGED
+                    && op.state() != ProviderOperation.State.ALREADY_CONVERGED
+                    && op.state() != ProviderOperation.State.RECONCILED
+                    && op.state() != ProviderOperation.State.SUPERSEDED)
+                    .sorted(java.util.Comparator.comparing(ProviderOperation::createdAt)
+                            .thenComparing(ProviderOperation::operationId))
+                    .toList();
+        }
+
+        @Override
+        public void insertProviderOperation(ProviderOperation operation) {
+            if (projection(operation.tenantId(), operation.billingSubscriptionId()).isEmpty()) {
+                throw new IllegalArgumentException("no tenant-owned projection for provider operation");
+            }
+            String k = key(operation.tenantId(), operation.providerKind(),
+                    operation.operationKind(), operation.idempotencyKey());
+            if (providerOperations.containsKey(operation.operationId()) || newOperations.containsKey(operation.operationId())
+                    || providerOperationKeys.containsKey(k) || newOperationKeys.containsKey(k)) {
+                throw new ConflictException("duplicate provider operation", null);
+            }
+            newOperations.put(operation.operationId(), operation);
+            newOperationKeys.put(k, operation.operationId());
+        }
+
+        @Override
+        public void updateProviderOperation(ProviderOperation next, ProviderOperation.State oldState, long oldEpoch) {
+            ProviderOperation prior = providerOperation(next.tenantId(), next.operationId())
+                    .orElseThrow(() -> new ConflictException("provider operation missing", null));
+            if (prior.state() != oldState || prior.leaseEpoch() != oldEpoch
+                    || !prior.providerKind().equals(next.providerKind())
+                    || !prior.billingSubscriptionId().equals(next.billingSubscriptionId())
+                    || !prior.idempotencyKey().equals(next.idempotencyKey())
+                    || !prior.requestSha256().equals(next.requestSha256())) {
+                throw new ConflictException("stale provider operation lease", null);
+            }
+            newOperations.put(next.operationId(), next);
+        }
+
+        @Override
+        public Optional<ProviderMapping> providerMapping(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            String k = key(tenantId, providerKind, billingSubscriptionId);
+            return Optional.ofNullable(newMappings.getOrDefault(k, providerMappings.get(k)));
+        }
+
+        @Override
+        public void insertProviderMapping(ProviderMapping mapping) {
+            if (projection(mapping.tenantId(), mapping.billingSubscriptionId()).isEmpty()) {
+                throw new IllegalArgumentException("provider mapping requires a tenant-owned projection");
+            }
+            String k = key(mapping.tenantId(), mapping.providerKind(), mapping.billingSubscriptionId());
+            String nativeKey = key(mapping.tenantId(), mapping.providerKind(), mapping.providerResourceId());
+            if (providerMappings.containsKey(k) || newMappings.containsKey(k)
+                    || providerNativeIds.containsKey(nativeKey) || newNativeIds.containsKey(nativeKey)) {
+                throw new ConflictException("duplicate provider mapping", null);
+            }
+            newMappings.put(k, mapping);
+            newNativeIds.put(nativeKey, mapping.billingSubscriptionId());
+        }
+
+        @Override
         public void appendEvent(OutboxEvent event) {
             newEvents.add(event);
         }
@@ -161,6 +254,10 @@ public final class InMemoryBillingStore implements BillingStore {
             usageBySource.putAll(newUsage);
             events.addAll(newEvents);
             audit.addAll(newAudit);
+            providerOperations.putAll(newOperations);
+            providerOperationKeys.putAll(newOperationKeys);
+            providerMappings.putAll(newMappings);
+            providerNativeIds.putAll(newNativeIds);
         }
     }
 }
