@@ -29,7 +29,8 @@ import java.util.UUID;
 public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
     private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
             "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql",
-            "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql"};
+            "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql",
+            "db/V7__provider_supersession.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -389,6 +390,28 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
                 q.setString(4, key);
                 try (ResultSet rs = q.executeQuery()) {
                     return rs.next() ? Optional.of(readProviderOperation(rs)) : Optional.empty();
+                }
+            } catch (SQLException e) {
+                throw fail(e);
+            }
+        }
+
+        @Override
+        public List<ProviderOperation> unresolvedProviderOperations(
+                String tenantId, String providerKind, String billingSubscriptionId) {
+            try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
+                    + "WHERE tenant_id = ? AND provider_kind = ? AND billing_subscription_id = ? "
+                    + "AND state NOT IN ('CONVERGED', 'ALREADY_CONVERGED', 'RECONCILED', 'SUPERSEDED') "
+                    + "ORDER BY created_at, operation_id")) {
+                q.setString(1, tenantId);
+                q.setString(2, providerKind);
+                q.setString(3, billingSubscriptionId);
+                try (ResultSet rs = q.executeQuery()) {
+                    List<ProviderOperation> unresolved = new ArrayList<>();
+                    while (rs.next()) {
+                        unresolved.add(readProviderOperation(rs));
+                    }
+                    return unresolved;
                 }
             } catch (SQLException e) {
                 throw fail(e);
