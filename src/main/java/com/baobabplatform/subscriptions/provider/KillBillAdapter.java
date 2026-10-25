@@ -79,7 +79,7 @@ public final class KillBillAdapter implements BillingProvider, AutoCloseable {
     }
 
     public KillBillAdapter(Map<String, TenantEndpoint> tenants) {
-        if (tenants == null || tenants.isEmpty() || tenants.containsKey(null)) {
+        if (tenants == null || tenants.isEmpty() || tenants.keySet().stream().anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("explicit provider-tenant bindings required");
         }
         this.tenants = Map.copyOf(tenants);
