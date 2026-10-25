@@ -10,6 +10,8 @@ import com.baobabplatform.subscriptions.service.BillingService;
 import com.baobabplatform.subscriptions.service.CallContext;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.FoundingEventInbox;
+import com.baobabplatform.subscriptions.store.CpSubscriptionLifecycleInbox;
+import com.baobabplatform.subscriptions.store.ConflictException;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpExchange;
@@ -76,6 +78,13 @@ public final class HttpApi implements AutoCloseable {
 
     public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
             String environment, FoundingEventInbox inbox, String trustedCpClient, String commandProducerClient) throws IOException {
+        this(port, billing, auth, store, provider, environment, inbox, trustedCpClient,
+                commandProducerClient, null, null);
+    }
+
+    public HttpApi(int port, BillingService billing, WorkloadAuthenticator auth, BillingStore store, BillingProvider provider,
+            String environment, FoundingEventInbox inbox, String trustedCpClient, String commandProducerClient,
+            CpSubscriptionLifecycleInbox subscriptionInbox, String subscriptionEventClient) throws IOException {
         this.billing = billing;
         this.auth = auth;
         this.store = store;
@@ -116,6 +125,36 @@ public final class HttpApi implements AutoCloseable {
                         } catch (IllegalArgumentException invalid) {
                             throw new BillingException(422, "INVALID_FOUNDING_EVENT",
                                     "the canonical founding lifecycle event is invalid", false);
+                        }
+                    }));
+        }
+        // Canonical CP ProductSubscription notifications are not billing commands.
+        // Store first; an authenticated CP state refresh must precede any effect.
+        // The route is deliberately disabled outside explicitly configured
+        // nonproduction PostgreSQL deployments until connected acceptance.
+        if (subscriptionInbox != null && subscriptionEventClient != null
+                && !subscriptionEventClient.isBlank() && !"production".equals(environment)) {
+            configuredRoutes.add(route("POST", "/internal/v1/cp-subscription-lifecycle-events", "billing:observe",
+                    (ex, m, body, ctx) -> {
+                        if (!subscriptionEventClient.equals(ctx.workloadId())) {
+                            throw new BillingException(403, "UNTRUSTED_SUBSCRIPTION_PRODUCER",
+                                    "the exact Control Plane event workload is required", false);
+                        }
+                        try {
+                            CpSubscriptionLifecycleInbox.Receipt receipt =
+                                    subscriptionInbox.receiveSubscriptionEvent(body, ctx.workloadId());
+                            return new Response(receipt.replayed() ? 200 : 202,
+                                    Map.of("event_id", receipt.eventId().toString(),
+                                            "durably_received", true,
+                                            "status", receipt.status(),
+                                            "replayed", receipt.replayed()),
+                                    receipt.replayed());
+                        } catch (ConflictException conflict) {
+                            throw new BillingException(409, "CP_EVENT_ID_CONFLICT",
+                                    "event identity was replayed with different custody or content", false);
+                        } catch (IllegalArgumentException invalid) {
+                            throw new BillingException(422, "INVALID_CP_SUBSCRIPTION_EVENT",
+                                    "the pinned CP subscription event contract is invalid", false);
                         }
                     }));
         }
