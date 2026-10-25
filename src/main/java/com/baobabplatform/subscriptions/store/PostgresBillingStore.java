@@ -26,11 +26,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 /** PostgreSQL persistence through a HikariCP pool. Schema changes are versioned SQL applied at startup. */
-public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
+public final class PostgresBillingStore implements BillingStore, FoundingEventInbox, CpSubscriptionLifecycleInbox {
     private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
             "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql",
             "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql",
-            "db/V7__provider_supersession.sql"};
+            "db/V7__provider_supersession.sql",
+            "db/V8__cp_subscription_lifecycle_inbox.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -102,6 +103,94 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
             }
             c.commit();
             return new FoundingEventInbox.Receipt(eventId, inserted == 0);
+        } catch (SQLException e) {
+            throw translate(e);
+        }
+    }
+
+    /**
+     * CP subscription events are notifications only. Receipt transaction
+     * commits a stable (source,id,hash,verified workload) before HTTP 202.
+     * A duplicate event with altered bytes or verified principal is refused.
+     */
+    @Override
+    public CpSubscriptionLifecycleInbox.Receipt receive(byte[] raw, String authenticatedClientId) {
+        if (authenticatedClientId == null
+                || !authenticatedClientId.matches("[A-Za-z0-9._:-]{3,200}")) {
+            throw new IllegalArgumentException("invalid authenticated CP workload identity");
+        }
+        CpSubscriptionLifecycleInbox.Notification notice = CpSubscriptionLifecycleInbox.verify(raw);
+        final String hash;
+        try {
+            hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw));
+        } catch (NoSuchAlgorithmException unavailable) {
+            throw new IllegalStateException("SHA-256 unavailable", unavailable);
+        }
+        try (Connection c = pool.getConnection()) {
+            int inserted;
+            try (PreparedStatement q = c.prepareStatement(
+                    "INSERT INTO billing.cp_subscription_lifecycle_inbox "
+                    + "(event_id,event_source,event_type,tenant_id,subscription_id,received_by_client_id,"
+                    + "payload_sha256,envelope) VALUES (?,?,?,?,?,?,?,?::jsonb) "
+                    + "ON CONFLICT (event_source,event_id) DO NOTHING")) {
+                q.setObject(1, notice.eventId());
+                q.setString(2, notice.source());
+                q.setString(3, notice.type());
+                q.setString(4, notice.tenantId());
+                q.setString(5, notice.subscriptionId());
+                q.setString(6, authenticatedClientId);
+                q.setString(7, hash);
+                q.setString(8, new String(raw, StandardCharsets.UTF_8));
+                inserted = q.executeUpdate();
+            }
+            if (inserted == 0) {
+                try (PreparedStatement q = c.prepareStatement(
+                        "SELECT payload_sha256,received_by_client_id,tenant_id,subscription_id "
+                        + "FROM billing.cp_subscription_lifecycle_inbox "
+                        + "WHERE event_source = ? AND event_id = ?")) {
+                    q.setString(1, notice.source());
+                    q.setObject(2, notice.eventId());
+                    try (ResultSet rs = q.executeQuery()) {
+                        if (!rs.next() || !hash.equals(rs.getString(1))
+                                || !authenticatedClientId.equals(rs.getString(2))
+                                || !notice.tenantId().equals(rs.getString(3))
+                                || !notice.subscriptionId().equals(rs.getString(4))) {
+                            throw new ConflictException("CP event ID reused with different custody", null);
+                        }
+                    }
+                }
+            }
+            c.commit();
+            return new CpSubscriptionLifecycleInbox.Receipt(
+                    notice.eventId(), inserted == 0, "PENDING_CP_REFRESH");
+        } catch (SQLException e) {
+            throw translate(e);
+        }
+    }
+
+    @Override
+    public List<CpSubscriptionLifecycleInbox.Notification> pending(String tenantId, int limit) {
+        if (tenantId == null || tenantId.isBlank() || limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("tenant and bounded limit required");
+        }
+        try (Connection c = pool.getConnection();
+             PreparedStatement q = c.prepareStatement(
+                     "SELECT event_id,event_type,subscription_id,event_source "
+                     + "FROM billing.cp_subscription_lifecycle_inbox "
+                     + "WHERE tenant_id = ? AND status = 'PENDING_CP_REFRESH' "
+                     + "ORDER BY received_at,event_id LIMIT ?")) {
+            q.setString(1, tenantId);
+            q.setInt(2, limit);
+            List<CpSubscriptionLifecycleInbox.Notification> result = new ArrayList<>();
+            try (ResultSet rs = q.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new CpSubscriptionLifecycleInbox.Notification(
+                            rs.getObject(1, UUID.class), rs.getString(2),
+                            tenantId, rs.getString(3), rs.getString(4)));
+                }
+            }
+            c.rollback();
+            return result;
         } catch (SQLException e) {
             throw translate(e);
         }
