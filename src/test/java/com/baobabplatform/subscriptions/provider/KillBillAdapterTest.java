@@ -74,7 +74,7 @@ class KillBillAdapterTest {
             } else if ("POST".equals(ex.getRequestMethod())) {
                 creates.incrementAndGet();
                 String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-                String external = KillBillAdapter.externalKey("unused");
+                String external = KillBillAdapter.externalKey("bsub_unused");
                 assertTrue(body.contains("\"planName\":\"synthetic-approved-monthly\""));
                 assertTrue(body.contains("\"externalKey\""));
                 nativeKey.set(com.baobabplatform.subscriptions.json.Json.mapper().readTree(body)
