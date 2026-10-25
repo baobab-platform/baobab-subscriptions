@@ -16,6 +16,7 @@ import com.baobabplatform.subscriptions.service.CpInternalAuthorityGate;
 import com.baobabplatform.subscriptions.service.InternalAuthorityGate;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.FoundingEventInbox;
+import com.baobabplatform.subscriptions.store.CpSubscriptionLifecycleInbox;
 import com.baobabplatform.subscriptions.store.InMemoryBillingStore;
 import com.baobabplatform.subscriptions.store.PostgresBillingStore;
 import java.time.Clock;
@@ -99,8 +100,24 @@ public final class Application {
                 && !config.allowedClients().contains(commandClient)) {
             throw new ConfigException("staging CP billing command client must be in WORKLOAD_ALLOWED_CLIENTS");
         }
+        CpSubscriptionLifecycleInbox subscriptionInbox = null;
+        String subscriptionEventClient = null;
+        if ("true".equals(System.getenv("CP_SUBSCRIPTION_LIFECYCLE_RECEIVER_ENABLED"))) {
+            // No live current-CP workload read/projection adapter is qualified.
+            // Production cannot acknowledge notifications as processed.
+            if (config.environment() == Config.Environment.PRODUCTION
+                    || !(store instanceof PostgresBillingStore)) {
+                throw new ConfigException("CP lifecycle intake requires nonproduction PostgreSQL");
+            }
+            subscriptionEventClient = System.getenv("CP_SUBSCRIPTION_EVENT_CLIENT_ID");
+            if (subscriptionEventClient == null || subscriptionEventClient.isBlank()
+                    || !config.allowedClients().contains(subscriptionEventClient)) {
+                throw new ConfigException("CP lifecycle intake requires an approved IAM workload client in the allowlist");
+            }
+            subscriptionInbox = (PostgresBillingStore) store;
+        }
         HttpApi api = new HttpApi(config.httpPort(), billing, auth, store, provider, environment,
-                foundingInbox, controlPlaneClient, commandClient);
+                foundingInbox, controlPlaneClient, commandClient, subscriptionInbox, subscriptionEventClient);
 
         CountDownLatch stopped = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {

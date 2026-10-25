@@ -28,6 +28,8 @@ ENTRIES = {'internal_authority': ('subscriptions/v1/internal-authority.schema.js
  'classification_reference': ('subscriptions/v1/internal-authority.schema.json',
                               '/properties/classification_reference'),
  'envelope': ('events/v1/envelope.schema.json', ''),
+ 'SubscriptionLifecycle': ('product/v1/events.schema.json', '/$defs/subscriptionLifecycleEventData'),
+ 'SubscriptionClassified': ('product/v1/events.schema.json', '/$defs/subscriptionClassifiedEventData'),
  'SponsorshipActivated': ('admission/v2/founding-lifecycle-events.schema.json',
                           '/$defs/SponsorshipActivated'),
  'SponsorshipSuspended': ('admission/v2/founding-lifecycle-events.schema.json',

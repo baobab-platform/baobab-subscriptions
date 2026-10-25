@@ -24,6 +24,7 @@ contracts:
   - contracts/organisation/v1/relationship.schema.json
   - contracts/product/v1/billing-policy.yaml
   - contracts/product/v1/domain.schema.json
+  - contracts/product/v1/events.schema.json
   - contracts/product/v1/subscription.schema.json
   - contracts/subscriptions/v1/billing.schema.json
   - contracts/subscriptions/v1/capabilities.json
