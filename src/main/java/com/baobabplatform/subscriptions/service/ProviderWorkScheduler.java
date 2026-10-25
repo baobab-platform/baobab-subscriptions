@@ -143,8 +143,11 @@ public final class ProviderWorkScheduler implements AutoCloseable {
                     if (resolved) reconciled++;
                     else failed++;
                 } catch (RuntimeException unavailable) {
-                    store.recordReconciliationAttempt(tenant, operation.operationId(), false,
-                            "OBSERVATION_WORKER_FAILURE", clock.instant());
+                    // The failure may be a competing replica losing the
+                    // lease CAS. A non-owner has made no provider observation
+                    // and MUST NOT consume another worker's retry budget.
+                    // A claimed-but-interrupted observation stays leased
+                    // until expiry and is recovered by the next eligible tick.
                     failed++;
                 }
             }
