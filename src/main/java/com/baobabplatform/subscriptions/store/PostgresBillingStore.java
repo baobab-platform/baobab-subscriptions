@@ -234,6 +234,29 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
         }
     }
 
+    /** Tenant and state bound discovery; all claims remain per-operation CAS. */
+    public List<ProviderOperation> preparedProviderOperations(String tenantId, int limit) {
+        if (tenantId == null || tenantId.isBlank() || limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("tenant and bounded limit required");
+        }
+        try (Connection c = pool.getConnection();
+             PreparedStatement q = c.prepareStatement(
+                     "SELECT * FROM billing.provider_operation WHERE tenant_id=? "
+                     + "AND provider_kind='KILLBILL' AND state='PREPARED' "
+                     + "ORDER BY created_at,operation_id LIMIT ?")) {
+            q.setString(1, tenantId);
+            q.setInt(2, limit);
+            List<ProviderOperation> result = new ArrayList<>();
+            try (ResultSet rs = q.executeQuery()) {
+                while (rs.next()) result.add(SqlTx.readProviderOperation(rs));
+            }
+            c.rollback();
+            return result;
+        } catch (SQLException error) {
+            throw translate(error);
+        }
+    }
+
     /** Durable cooldown and exhaustion. No provider request or CP mutation here. */
     public void recordReconciliationAttempt(String tenantId, UUID operationId,
                                              boolean resolved, String reason,
