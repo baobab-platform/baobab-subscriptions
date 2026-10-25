@@ -108,7 +108,7 @@ class KillBillAdapterTest {
                 String bsId = result.path("billing_subscription_id").asText();
                 Projection projection = billing.get(tenant, bsId);
                 ProviderOperation op = store.transact(tx -> tx.providerOperationForKey(
-                        tenant, "KILLBILL", "ENSURE_SUBSCRIPTION", ctx.idempotencyKey())).orElseThrow();
+                        tenant, "KILL_BILL", "ENSURE_SUBSCRIPTION", ctx.idempotencyKey())).orElseThrow();
                 ProviderOperationIntent intent = new ProviderOperationIntent(op.operationId(),
                         tenant, bsId, op.authoritativeRevision(), op.operationKind(), op.requestSha256());
                 assertThrows(UnsupportedOperationException.class, () -> adapter.ensureSubscription(projection));
@@ -128,7 +128,7 @@ class KillBillAdapterTest {
                 // Kill Bill's external key makes another ensure converge by read-back.
                 assertTrue(adapter.ensureAuthorised(projection, intent, terms).isConverged());
                 assertEquals(1, creates.get());
-                assertEquals("KILLBILL", adapter.kind());
+                assertEquals("KILL_BILL", adapter.kind());
                 assertFalse(adapter.capabilities().usage());
             }
         } finally {
