@@ -169,6 +169,7 @@ public final class CpCurrentSubscriptionAuthority implements ProviderWorkSchedul
         if (!exactFields(classification, CLASSIFICATION_FIELDS)
                 || !"COMMERCIAL".equals(classification.path("subscription_type").asText())
                 || !p.classification().classificationId().equals(classification.path("classification_id").asText())
+                || !p.classification().classificationSource().equals(classification.path("classification_source").asText())
                 || !p.classification().classificationReference().equals(
                         classification.path("classification_reference").asText())) return null;
         return result;
