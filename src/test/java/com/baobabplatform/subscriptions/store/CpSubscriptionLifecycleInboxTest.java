@@ -97,8 +97,8 @@ public class CpSubscriptionLifecycleInboxTest {
                     () -> store.receiveSubscriptionEvent(changed, "baobab-cp-workload"));
             assertTrue(store.pending(TENANT, 100).stream().anyMatch(n -> n.eventId().equals(id)));
             assertEquals(List.of(), store.pending("tn_01k9siblingenterprise", 100));
-            assertEquals(0, store.transact(tx ->
-                    tx.projectionForProductSubscription(TENANT, SUB).isPresent() ? 1 : 0),
+            assertFalse(store.transact(tx ->
+                    tx.projectionForProductSubscription(TENANT, SUB).isPresent()),
                     "notifications never create or reclassify the billing projection");
         }
         try (PostgresBillingStore restarted = new PostgresBillingStore(url, user, password)) {
