@@ -366,7 +366,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
         @Override
         public Optional<ProviderOperation> providerOperation(String tenantId, UUID operationId) {
             try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
-                    + "WHERE tenant_id = ? AND operation_id = ? FOR UPDATE")) {
+                    + "WHERE tenant_id = ? AND operation_id = ?")) {
                 q.setString(1, tenantId);
                 q.setObject(2, operationId);
                 try (ResultSet rs = q.executeQuery()) {
@@ -382,7 +382,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
                 String tenantId, String providerKind, String operationKind, String key) {
             try (PreparedStatement q = c.prepareStatement("SELECT * FROM billing.provider_operation "
                     + "WHERE tenant_id = ? AND provider_kind = ? AND operation_kind = ? "
-                    + "AND idempotency_key = ? FOR UPDATE")) {
+                    + "AND idempotency_key = ?")) {
                 q.setString(1, tenantId);
                 q.setString(2, providerKind);
                 q.setString(3, operationKind);
