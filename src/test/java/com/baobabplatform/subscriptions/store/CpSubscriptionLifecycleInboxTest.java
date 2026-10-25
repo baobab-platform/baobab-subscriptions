@@ -14,11 +14,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** Both wire contract negatives and real PostgreSQL 17 restart/dedup proof. */
-class CpSubscriptionLifecycleInboxTest {
+public class CpSubscriptionLifecycleInboxTest {
     static final String TENANT = "tn_01k4m7x9q2v6c8r3d5f1h0j4";
     static final String SUB = "sub_01k4z9j3n2";
 
-    static byte[] event(UUID id, String kind) throws Exception {
+    public static byte[] event(UUID id, String kind) throws Exception {
         ObjectNode envelope = Json.mapper().createObjectNode();
         envelope.put("specversion", "1.0");
         envelope.put("id", id.toString());
