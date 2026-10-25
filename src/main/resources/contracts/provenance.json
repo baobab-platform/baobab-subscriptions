@@ -13,7 +13,9 @@
     "SponsorshipExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipExpired",
     "DeferralActivated": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralActivated",
     "DeferralRevoked": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralRevoked",
-    "DeferralExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralExpired"
+    "DeferralExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralExpired",
+    "SubscriptionLifecycle": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionLifecycleEventData",
+    "SubscriptionClassified": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionClassifiedEventData"
   },
   "files": {
     "admission/v1/application.schema.json": "3febbc5e37744f50ee64e4737e9ca87bcd959263099356d14fe3734ef482e8f3",
@@ -32,6 +34,7 @@
     "organisation/v1/relationship.schema.json": "b4cd03addc0ea24f183d6d71c744bf5d9ff70808abe8116b25e943dd79e2d171",
     "product/v1/billing-policy.yaml": "2b2e4ff1c25e9102f3a4f1c4da802bb58bf90c4d87cd8a8c32bbe76042068a11",
     "product/v1/domain.schema.json": "093933293d3dd899f2a66b50bbffacadc9642aff542890803f2a07f08740175c",
+    "product/v1/events.schema.json": "fa354eb08814d4cff659ba17298643a4dbe1defc1cd4bf6b444c418cfe578754",
     "product/v1/subscription.schema.json": "e0c1e62667285b70a9296c06843230193329254fcb42587533d8b2dafd40ebd3",
     "subscriptions/v1/billing.schema.json": "e89ce3923267a068d0e345a30b16f7a450e2e08c09061075f0b1e8271018f74a",
     "subscriptions/v1/capabilities.json": "f2fa060e945d39b3a0e981ef777938b1755c4c0fb19119f22e965378ff8e9a2e",
