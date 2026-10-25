@@ -7,15 +7,15 @@
     "product_subscription_id": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json#/properties/product_subscription_id",
     "classification_reference": "https://contracts.baobab-platform.com/subscriptions/v1/internal-authority.schema.json#/properties/classification_reference",
     "envelope": "https://contracts.baobab-platform.com/events/v1/envelope.schema.json",
+    "SubscriptionLifecycle": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionLifecycleEventData",
+    "SubscriptionClassified": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionClassifiedEventData",
     "SponsorshipActivated": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipActivated",
     "SponsorshipSuspended": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipSuspended",
     "SponsorshipRevoked": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipRevoked",
     "SponsorshipExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/SponsorshipExpired",
     "DeferralActivated": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralActivated",
     "DeferralRevoked": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralRevoked",
-    "DeferralExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralExpired",
-    "SubscriptionLifecycle": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionLifecycleEventData",
-    "SubscriptionClassified": "https://contracts.baobab-platform.com/product/v1/events.schema.json#/$defs/subscriptionClassifiedEventData"
+    "DeferralExpired": "https://contracts.baobab-platform.com/admission/v2/founding-lifecycle-events.schema.json#/$defs/DeferralExpired"
   },
   "files": {
     "admission/v1/application.schema.json": "3febbc5e37744f50ee64e4737e9ca87bcd959263099356d14fe3734ef482e8f3",
