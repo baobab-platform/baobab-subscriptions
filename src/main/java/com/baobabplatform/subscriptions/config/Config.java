@@ -72,10 +72,20 @@ public record Config(
         }
 
         String provider = env.getOrDefault("BILLING_PROVIDER", TEMPORARY_PROVIDER).trim().toLowerCase(Locale.ROOT);
-        if (!provider.equals(TEMPORARY_PROVIDER)) {
-            problems.add("BILLING_PROVIDER must be temporary: the Kill Bill provider is not implemented yet");
+        if (!provider.equals(TEMPORARY_PROVIDER) && !provider.equals("killbill")) {
+            problems.add("BILLING_PROVIDER must be temporary or killbill");
         } else if (environment == Environment.PRODUCTION) {
-            problems.add("the temporary billing provider is simulated and is refused in production");
+            problems.add(provider.equals(TEMPORARY_PROVIDER)
+                    ? "the temporary billing provider is simulated and is refused in production"
+                    : "Kill Bill requires protected connected provider/CP/Payments acceptance before production");
+        }
+        if (provider.equals("killbill")) {
+            if (databaseUrl == null) {
+                problems.add("Kill Bill requires PostgreSQL provider-operation custody");
+            }
+            if (blankToNull(env.get("KILLBILL_TENANTS_FILE")) == null) {
+                problems.add("Kill Bill requires KILLBILL_TENANTS_FILE with explicit per-tenant credentials");
+            }
         }
 
         URI issuer = parseUri(env.get("WORKLOAD_ISSUER"), "WORKLOAD_ISSUER", problems);
