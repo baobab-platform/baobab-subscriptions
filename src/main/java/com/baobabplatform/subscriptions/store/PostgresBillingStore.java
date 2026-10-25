@@ -31,7 +31,8 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
             "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql",
             "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql",
             "db/V7__provider_supersession.sql",
-            "db/V8__cp_subscription_lifecycle_inbox.sql"};
+            "db/V8__cp_subscription_lifecycle_inbox.sql",
+            "db/V9__provider_reconciliation_retry.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
@@ -193,6 +194,123 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
             return result;
         } catch (SQLException e) {
             throw translate(e);
+        }
+    }
+
+
+    /**
+     * Bounded tenant-specific work scan, never a cross-tenant provider
+     * operation listing. Rows with uncertain outcomes are observation-only.
+     * Advisory work leases still reside in ProviderReconciliationService.
+     */
+    public List<ProviderOperation> dueProviderObservations(String tenantId, int limit, java.time.Instant now) {
+        if (tenantId == null || tenantId.isBlank() || limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("tenant and bounded limit required");
+        }
+        try (Connection c = pool.getConnection();
+             PreparedStatement q = c.prepareStatement(
+                     "SELECT p.* FROM billing.provider_operation p "
+                     + "LEFT JOIN billing.provider_reconciliation_retry r "
+                     + "ON p.tenant_id=r.tenant_id AND p.operation_id=r.operation_id "
+                     + "WHERE p.tenant_id=? AND p.provider_kind='KILLBILL' "
+                     + "AND ((p.state='SENT' AND p.lease_expires_at<=?) "
+                     + "OR (p.state='UNKNOWN_OUTCOME' AND (p.lease_expires_at IS NULL "
+                     + "OR p.lease_expires_at<=?))) "
+                     + "AND (r.status IS NULL OR (r.status='SCHEDULED' AND r.next_attempt_at<=?)) "
+                     + "ORDER BY p.updated_at,p.operation_id LIMIT ?")) {
+            q.setString(1, tenantId);
+            q.setTimestamp(2, Timestamp.from(now));
+            q.setTimestamp(3, Timestamp.from(now));
+            q.setTimestamp(4, Timestamp.from(now));
+            q.setInt(5, limit);
+            List<ProviderOperation> due = new ArrayList<>();
+            try (ResultSet rs = q.executeQuery()) {
+                while (rs.next()) due.add(SqlTx.readProviderOperation(rs));
+            }
+            c.rollback();
+            return due;
+        } catch (SQLException error) {
+            throw translate(error);
+        }
+    }
+
+    /** Durable cooldown and exhaustion. No provider request or CP mutation here. */
+    public void recordReconciliationAttempt(String tenantId, UUID operationId,
+                                             boolean resolved, String reason,
+                                             java.time.Instant now) {
+        if (tenantId == null || tenantId.isBlank()
+                || reason != null && !reason.matches("[A-Z][A-Z0-9_]{2,63}$")) {
+            throw new IllegalArgumentException("invalid retry custody");
+        }
+        try (Connection c = pool.getConnection()) {
+            // The operation must already exist and belong to the tenant.
+            try (PreparedStatement q = c.prepareStatement(
+                    "INSERT INTO billing.provider_reconciliation_retry "
+                    + "(tenant_id,operation_id,attempts,next_attempt_at,status,last_reason_code) "
+                    + "VALUES (?,?,0,?,'SCHEDULED',NULL) ON CONFLICT DO NOTHING")) {
+                q.setString(1, tenantId);
+                q.setObject(2, operationId);
+                q.setTimestamp(3, Timestamp.from(now));
+                q.executeUpdate();
+            }
+            int attempts;
+            try (PreparedStatement q = c.prepareStatement(
+                    "SELECT attempts FROM billing.provider_reconciliation_retry "
+                    + "WHERE tenant_id=? AND operation_id=? FOR UPDATE")) {
+                q.setString(1, tenantId);
+                q.setObject(2, operationId);
+                try (ResultSet rs = q.executeQuery()) {
+                    if (!rs.next()) throw new IllegalStateException("provider retry custody missing");
+                    attempts = Math.min(8, rs.getInt(1) + 1);
+                }
+            }
+            // Deterministic bounded jitter (0..9s) so retry cadence remains
+            // stable and inspectable across restarts.
+            long seconds = Math.min(3600, 10L << Math.min(attempts - 1, 8))
+                    + Math.floorMod(operationId.hashCode(), 10);
+            try (PreparedStatement q = c.prepareStatement(
+                    "UPDATE billing.provider_reconciliation_retry SET attempts=?, "
+                    + "next_attempt_at=?,status=?,last_reason_code=?,updated_at=? "
+                    + "WHERE tenant_id=? AND operation_id=?")) {
+                q.setInt(1, attempts);
+                q.setTimestamp(2, Timestamp.from(now.plusSeconds(seconds)));
+                q.setString(3, resolved ? "RESOLVED" : attempts >= 8 ? "EXHAUSTED" : "SCHEDULED");
+                q.setString(4, reason);
+                q.setTimestamp(5, Timestamp.from(now));
+                q.setString(6, tenantId);
+                q.setObject(7, operationId);
+                q.executeUpdate();
+            }
+            c.commit();
+        } catch (SQLException error) {
+            throw translate(error);
+        }
+    }
+
+    /** Operational aggregate: no native IDs, person data, or provider secrets. */
+    public java.util.Map<String, Long> reconciliationCounts(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) throw new IllegalArgumentException("tenant required");
+        try (Connection c = pool.getConnection();
+             PreparedStatement q = c.prepareStatement(
+                     "SELECT p.state,COUNT(*) FROM billing.provider_operation p "
+                     + "WHERE p.tenant_id=? AND p.provider_kind='KILLBILL' GROUP BY p.state")) {
+            q.setString(1, tenantId);
+            java.util.Map<String, Long> counts = new java.util.HashMap<>();
+            try (ResultSet rs = q.executeQuery()) {
+                while (rs.next()) counts.put(rs.getString(1), rs.getLong(2));
+            }
+            try (PreparedStatement e = c.prepareStatement(
+                    "SELECT COUNT(*) FROM billing.provider_reconciliation_retry "
+                    + "WHERE tenant_id=? AND status='EXHAUSTED'")) {
+                e.setString(1, tenantId);
+                try (ResultSet rs = e.executeQuery()) {
+                    if (rs.next()) counts.put("EXHAUSTED", rs.getLong(1));
+                }
+            }
+            c.rollback();
+            return java.util.Map.copyOf(counts);
+        } catch (SQLException error) {
+            throw translate(error);
         }
     }
 
