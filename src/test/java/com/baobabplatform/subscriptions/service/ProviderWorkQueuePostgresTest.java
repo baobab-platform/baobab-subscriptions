@@ -47,7 +47,7 @@ class ProviderWorkQueuePostgresTest {
             service.ensure(new CallContext("baobab-cp-workload", "synthetic-operator",
                     key, UUID.randomUUID().toString()), body.getBytes(StandardCharsets.UTF_8));
             ProviderOperation op = pg.transact(tx -> tx.providerOperationForKey(
-                    tenant, "KILLBILL", "ENSURE_SUBSCRIPTION", key)).orElseThrow();
+                    tenant, "KILL_BILL", "ENSURE_SUBSCRIPTION", key)).orElseThrow();
             operationId = op.operationId();
             assertTrue(pg.preparedProviderOperations(tenant, 10).stream()
                     .anyMatch(item -> item.operationId().equals(operationId)));
