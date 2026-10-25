@@ -2,6 +2,7 @@ package com.baobabplatform.subscriptions.provider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.baobabplatform.subscriptions.store.PostgresBillingStore;
@@ -29,6 +30,7 @@ class ProviderMigrationTest {
         String password = System.getenv("TEST_DATABASE_PASSWORD");
         try (PostgresBillingStore migrated = new PostgresBillingStore(url, user, password);
              Connection c = DriverManager.getConnection(url, user, password)) {
+            assertTrue(migrated.ping(), "V5 migration must yield a reachable billing store");
             assertEquals(17, c.getMetaData().getDatabaseMajorVersion(),
                     "Baobab's Subscriptions persistence must be tested against PostgreSQL 17");
             c.setAutoCommit(false);
