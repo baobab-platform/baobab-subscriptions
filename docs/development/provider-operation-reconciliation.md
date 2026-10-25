@@ -24,11 +24,12 @@
 
 ## Lease and crash model
 
+- A new CP commercial revision may supersede a `PREPARED` predecessor as `SUPERSEDED` (no provider request could yet have been sent). It may also prepare a new intent while an earlier SENT/UNKNOWN outcome exists, **but may not dispatch it** until all earlier uncertainty has been resolved. This fence is scoped to the tenant, provider and canonical billing subscription, not merely a request key.
 - Dispatch claim: `PREPARED -> SENT`, increment epoch; once SENT, retrying dispatch is forbidden even after expiry.
 - Dispatch outcome: `SENT -> CONVERGED | ALREADY_CONVERGED | RETRYABLE_FAILURE | PERMANENT_FAILURE | CONFLICT | UNKNOWN_OUTCOME` under current owner+epoch and unexpired lease. `RETRYABLE_FAILURE` does **not** automatically permit a new monetary dispatch.
 - Recovery: expired SENT or free/expired UNKNOWN_OUTCOME -> leased UNKNOWN_OUTCOME with incremented epoch -> RECONCILED on observed matching ID or free UNKNOWN_OUTCOME on inability to establish the outcome.
 - Once RECONCILED, automatic replay/re-dispatch is refused. Any unresolved or conflicting mapping remains an operator case.
-- A changed CP revision, foreign tenant, absent projection, terminal lifecycle, INTERNAL classification or simulated provider refuses every provider mutation and reconciliation attempt. Reconciliation does not trust the historical event as current authority.
+- A changed CP revision fences **new dispatch**, but permits **read-only recovery of an earlier dispatched operation** when the current subscription is still priced and belongs to the same tenant/provider. Foreign tenants, missing projections, terminal lifecycle, INTERNAL classification and simulated providers fail closed. Historical recovery cannot authorise new commercial terms. Reconciliation does not trust the historical event as current authority.
 - An observation worker whose lease expires during external IO cannot commit its stale result. Another worker may later observe safely using a new epoch.
 
 ## Execution and security gates
