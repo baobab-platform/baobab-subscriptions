@@ -114,7 +114,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
      * A duplicate event with altered bytes or verified principal is refused.
      */
     @Override
-    public CpSubscriptionLifecycleInbox.Receipt receive(byte[] raw, String authenticatedClientId) {
+    public CpSubscriptionLifecycleInbox.Receipt receiveSubscriptionEvent(byte[] raw, String authenticatedClientId) {
         if (authenticatedClientId == null
                 || !authenticatedClientId.matches("[A-Za-z0-9._:-]{3,200}")) {
             throw new IllegalArgumentException("invalid authenticated CP workload identity");
