@@ -103,6 +103,7 @@ class CpCurrentSubscriptionAuthorityTest {
                     if(badResponse.get()==2) classification.put("subscription_type","INTERNAL");
                     if(badResponse.get()==3) response.put("tenant_id","tn_foreign");
                     if(badResponse.get()==4) response.put("expires_at",now.minusSeconds(1).toString());
+                    if(badResponse.get()==5) classification.put("classification_source","RECLASSIFICATION");
                     raw=Json.mapper().writeValueAsBytes(response);
                 }
                 request.sendResponseHeaders(status,raw.length);
@@ -119,7 +120,7 @@ class CpCurrentSubscriptionAuthorityTest {
                 assertTrue(authority.permitsObservation(op));
                 assertTrue(authority.approveDispatch(op).isEmpty(), "Shared v1 never authorizes money");
                 assertEquals(1, preflight.get());
-                for (int i=1;i<=4;i++){
+                for (int i=1;i<=5;i++){
                     badResponse.set(i);
                     assertFalse(authority.permitsObservation(op),"CP drift or stale lease must deny");
                 }
