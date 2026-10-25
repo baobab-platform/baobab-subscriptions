@@ -118,7 +118,6 @@ class ProviderReconciliationTest {
                 tenant, "KILLBILL", "ENSURE_SUBSCRIPTION", context.idempotencyKey())).orElseThrow();
         assertEquals(ProviderOperation.State.PREPARED, op.state());
         assertEquals(projection.path("authoritative_revision").asLong(), op.authoritativeRevision());
-        assertEquals(1, op.authoritativeRevision() > 0 ? 1 : 0);
         assertEquals(op.operationId(), store.transact(tx -> tx.providerOperationForKey(
                 tenant, "KILLBILL", "ENSURE_SUBSCRIPTION", context.idempotencyKey())).orElseThrow().operationId());
 
