@@ -16,6 +16,7 @@ import com.baobabplatform.subscriptions.provider.KillBillTenantRegistry;
 import com.baobabplatform.subscriptions.service.ProviderWorkScheduler;
 import com.baobabplatform.subscriptions.service.BillingService;
 import com.baobabplatform.subscriptions.service.CpInternalAuthorityGate;
+import com.baobabplatform.subscriptions.service.CpCurrentSubscriptionAuthority;
 import com.baobabplatform.subscriptions.service.InternalAuthorityGate;
 import com.baobabplatform.subscriptions.store.BillingStore;
 import com.baobabplatform.subscriptions.store.FoundingEventInbox;
@@ -145,11 +146,22 @@ public final class Application {
             // workload read/attestation contract. The only legal runtime gate
             // here is fail-closed: this worker monitors/cools down pending work
             // but cannot send provider IO or certify commercial readiness.
+            ProviderWorkScheduler.CpAuthority currentCp = ProviderWorkScheduler.CpAuthority.unavailable();
+            if ("true".equals(System.getenv("CP_SUBSCRIPTION_CURRENT_AUTHORITY_ENABLED"))) {
+                String endpoint = System.getenv("CP_SUBSCRIPTION_CURRENT_AUTHORITY_BASE_URL");
+                String cpTokenFile = System.getenv("CP_SUBSCRIPTION_CURRENT_AUTHORITY_TOKEN_FILE");
+                if (config.environment() == Config.Environment.PRODUCTION
+                        || endpoint == null || endpoint.isBlank()
+                        || cpTokenFile == null || cpTokenFile.isBlank()) {
+                    throw new ConfigException("current CP subscription reader requires nonproduction endpoint and IAM CP-audience token");
+                }
+                currentCp = CpCurrentSubscriptionAuthority.create(
+                        pg, URI.create(endpoint), Path.of(cpTokenFile));
+            }
             worker = new ProviderWorkScheduler(pg, billing.providerOperations(), adapter, auth,
                     Path.of(workloadFile), workerClient,
                     java.util.Set.of(tenantIds.split(",")),
-                    ProviderWorkScheduler.CpAuthority.unavailable(),
-                    Clock.systemUTC(), false);
+                    currentCp, Clock.systemUTC(), false);
             worker.start(java.time.Duration.ofSeconds(60));
         }
         ProviderWorkScheduler finalWorker = worker;
