@@ -1824,5 +1824,53 @@
       }
     },
     "valid": false
+  },
+  {
+    "name": "SubscriptionLifecycle/valid",
+    "contract": "SubscriptionLifecycle",
+    "instance": {
+      "subscription_id": "sub_01k4z9j3n2",
+      "tenant_id": "tn_01k4m7x9q2v6c8r3d5f1h0j4",
+      "product_id": "baobab-xbt",
+      "status": "ACTIVE"
+    },
+    "valid": true
+  },
+  {
+    "name": "SubscriptionLifecycle/invalid-extra-classification",
+    "contract": "SubscriptionLifecycle",
+    "instance": {
+      "subscription_id": "sub_01k4z9j3n2",
+      "tenant_id": "tn_01k4m7x9q2v6c8r3d5f1h0j4",
+      "product_id": "baobab-xbt",
+      "status": "ACTIVE",
+      "subscription_type": "INTERNAL"
+    },
+    "valid": false
+  },
+  {
+    "name": "SubscriptionClassified/valid",
+    "contract": "SubscriptionClassified",
+    "instance": {
+      "subscription_id": "sub_01k4z9j3n2",
+      "tenant_id": "tn_01k4m7x9q2v6c8r3d5f1h0j4",
+      "classification_id": "subcls_01k9zuriinternal",
+      "subscription_type": "INTERNAL",
+      "classification_source": "ADMISSION_DECISION",
+      "classified_at": "2026-10-25T12:00:00Z"
+    },
+    "valid": true
+  },
+  {
+    "name": "SubscriptionClassified/invalid-missing-id",
+    "contract": "SubscriptionClassified",
+    "instance": {
+      "subscription_id": "sub_01k4z9j3n2",
+      "tenant_id": "tn_01k4m7x9q2v6c8r3d5f1h0j4",
+      "subscription_type": "INTERNAL",
+      "classification_source": "ADMISSION_DECISION",
+      "classified_at": "2026-10-25T12:00:00Z"
+    },
+    "valid": false
   }
 ]
