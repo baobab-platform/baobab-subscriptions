@@ -137,11 +137,25 @@ public final class BillingService {
     }
 
     private void requireInternalAuthority(Projection p) {
-        requireProjectionAuthority(p.tenantId(),p.productSubscriptionId(),p.authoritativeRevision(),
+        requireInternalAuthority(p,p.authoritativeRevision());
+    }
+
+    private void requireInternalAuthority(Projection p, long requestedRevision) {
+        requireProjectionAuthority(p.tenantId(),p.productSubscriptionId(),requestedRevision,
                 p.productId(),p.subscriptionType(),p.classification());
         if (p.subscriptionType() == SubscriptionType.INTERNAL) {
             requireInternalAuthority(p.tenantId(), p.productSubscriptionId(),
                     p.classification().classificationReference());
+        }
+    }
+
+    // Keep bounded remote CP calls outside the native transaction. The local
+    // version fence refuses a projection changed while CP was evaluating it;
+    // the caller retries from a fresh read/decision, never a cached permission.
+    private static void requireUnchangedProjection(Projection observed, Projection current) {
+        if (!observed.equals(current)) {
+            throw new BillingException(409,"PROJECTION_CHANGED_DURING_AUTHORITY_CHECK",
+                    "the billing projection changed; obtain current authority and retry",true);
         }
     }
 
@@ -420,9 +434,9 @@ public final class BillingService {
     public Result resume(CallContext ctx, String billingSubscriptionId, byte[] body) {
         CommandRequest preview = decode(parse(body), "BillingProjectionCommand", CommandRequest.class);
         Projection observed = get(preview.tenantId(), billingSubscriptionId);
-        requireInternalAuthority(observed);
+        requireInternalAuthority(observed, preview.authoritativeRevision());
         return command(ctx, "resume", billingSubscriptionId, body, (tx, current, req, at) -> {
-            requireInternalAuthority(current);
+            requireUnchangedProjection(observed, current);
             if (current.billingState().terminal()) {
                 throw terminated();
             }
@@ -464,10 +478,11 @@ public final class BillingService {
         JsonNode node = parse(body);
         UsageRequest req = decode(node, "RecordUsageRequest", UsageRequest.class);
         // Check BEFORE the replay cache. Revocation invalidates prior success.
-        requireInternalAuthority(get(req.tenantId(), billingSubscriptionId));
+        Projection observed = get(req.tenantId(), billingSubscriptionId);
+        requireInternalAuthority(observed);
         return idempotent(req.tenantId(), "usage:" + billingSubscriptionId, ctx, node, tx -> {
             Projection projection = tx.projection(req.tenantId(), billingSubscriptionId).orElseThrow(BillingException::notFound);
-            requireInternalAuthority(projection);
+            requireUnchangedProjection(observed, projection);
             if (projection.billingState().terminal()) {
                 throw terminated();
             }

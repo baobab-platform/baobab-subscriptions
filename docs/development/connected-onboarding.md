@@ -21,7 +21,10 @@ match before ensure, resume or usage, including before a successful replay.
 This nonproduction opt-in does not authorize INTERNAL: its existing independent
 eligibility port must also permit the operation. State-reducing suspend/terminate
 retain their existing CP-producer boundary rather than depending on ACTIVE state.
-No positive authority survives CP outage or revision drift. This is a short-lived
+No positive authority survives CP outage or revision drift.
+Resume/usage evaluate remote authority once before opening the write transaction,
+then compare the complete persisted projection inside it. Concurrent changes
+produce a retryable conflict rather than a second network call under DB locks. This is a short-lived
 snapshot consistency gate, not distributed atomic CP/engine transaction fencing.
 
 For connected caller revocation, set `WORKLOAD_INTROSPECTION_ENDPOINT` (HTTPS),
