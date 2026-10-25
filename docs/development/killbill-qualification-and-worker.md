@@ -37,6 +37,10 @@ Restrict file permissions; no credentials or identifiable customer data in repo.
 
 The V9 `provider_reconciliation_retry` table persists retry attempts, cooldown, jitter and exhaustion per tenant/operation, capped at 8. Unknown outcomes are observation-only. No automatic POST retries, irrespective of HTTP classification. Monitoring counts are tenant-bound and must be exposed only through the authorised operator plane; the worker emits count-only logs, no credentials or native IDs.
 
+## Opt-in real-provider compatibility exercise
+
+Set `KILLBILL_IT_BASE_URL`, `KILLBILL_IT_CP_TENANT`, `KILLBILL_IT_BSUB_ID`, `KILLBILL_IT_NATIVE_SUBSCRIPTION_ID`, `KILLBILL_IT_USERNAME_FILE`, `KILLBILL_IT_PASSWORD_FILE`, `KILLBILL_IT_APIKEY_FILE` and `KILLBILL_IT_APISECRET_FILE` for a disposable genuine Kill Bill 0.24.22 tenant and a **previously provisioned** synthetic subscription. `KillBillLiveCompatibilityTest` performs only GET-by-external-key and asserts its native ID; it cannot create, invoice or pay. The test is skipped without a real fixture. Independently attest the container digest, Kill Bill version, PostgreSQL 17 schema and disabled/default payment plugins before accepting this evidence.
+
 ## Release/acceptance gates (all still separate)
 
 1. Pinned Kill Bill 0.24.22 image, patches, Java/toolchain and PostgreSQL 17 database on a disposable topology; checksum/license/dependency/DDL audit.
