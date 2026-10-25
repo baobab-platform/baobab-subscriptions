@@ -36,6 +36,10 @@ public interface BillingProvider {
      * reconciliation. An unimplemented observer preserves UNKNOWN_OUTCOME.
      */
     default ProviderOutcome observeSubscription(Projection projection, ProviderOperationIntent intent) {
+        // Even adapters without observation support reject malformed inputs;
+        // no null intent may be confused with a safe provider read-back.
+        java.util.Objects.requireNonNull(projection, "projection");
+        java.util.Objects.requireNonNull(intent, "intent");
         return ProviderOutcome.failure(ProviderOutcome.Status.UNKNOWN_OUTCOME, "OBSERVATION_NOT_SUPPORTED");
     }
 
