@@ -29,7 +29,7 @@ import java.util.UUID;
 public final class PostgresBillingStore implements BillingStore, FoundingEventInbox {
     private static final String[] MIGRATIONS = {"db/V1__billing.sql", "db/V2__audit_and_lifecycle.sql",
             "db/V3__founding_lifecycle_inbox.sql", "db/V4__founding_inbox_verified_workload.sql",
-            "db/V5__provider_operations_and_mappings.sql"};
+            "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
