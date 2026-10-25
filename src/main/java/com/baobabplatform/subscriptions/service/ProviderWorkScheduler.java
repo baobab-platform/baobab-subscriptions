@@ -129,10 +129,9 @@ public final class ProviderWorkScheduler implements AutoCloseable {
                 examined++;
                 if (!cpAuthority.permitsObservation(operation)) {
                     blocked++;
-                    // Persist cooldown for a CP authority outage as well;
-                    // never repeatedly poll a foreign or revoked tenant.
-                    store.recordReconciliationAttempt(tenant, operation.operationId(),
-                            false, "CP_OBSERVATION_AUTHORITY_UNAVAILABLE", clock.instant());
+                    // Missing current CP proof is NOT a provider retry
+                    // attempt and must not exhaust the financial recovery
+                    // budget. It simply blocks external observation.
                     continue;
                 }
                 try {
