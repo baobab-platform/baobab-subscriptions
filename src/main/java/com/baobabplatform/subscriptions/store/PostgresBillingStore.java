@@ -212,7 +212,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
                      "SELECT p.* FROM billing.provider_operation p "
                      + "LEFT JOIN billing.provider_reconciliation_retry r "
                      + "ON p.tenant_id=r.tenant_id AND p.operation_id=r.operation_id "
-                     + "WHERE p.tenant_id=? AND p.provider_kind='KILLBILL' "
+                     + "WHERE p.tenant_id=? AND p.provider_kind='KILL_BILL' "
                      + "AND ((p.state='SENT' AND p.lease_expires_at<=?) "
                      + "OR (p.state='UNKNOWN_OUTCOME' AND (p.lease_expires_at IS NULL "
                      + "OR p.lease_expires_at<=?))) "
@@ -242,7 +242,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
         try (Connection c = pool.getConnection();
              PreparedStatement q = c.prepareStatement(
                      "SELECT * FROM billing.provider_operation WHERE tenant_id=? "
-                     + "AND provider_kind='KILLBILL' AND state='PREPARED' "
+                     + "AND provider_kind='KILL_BILL' AND state='PREPARED' "
                      + "ORDER BY created_at,operation_id LIMIT ?")) {
             q.setString(1, tenantId);
             q.setInt(2, limit);
@@ -316,7 +316,7 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
         try (Connection c = pool.getConnection();
              PreparedStatement q = c.prepareStatement(
                      "SELECT p.state,COUNT(*) FROM billing.provider_operation p "
-                     + "WHERE p.tenant_id=? AND p.provider_kind='KILLBILL' GROUP BY p.state")) {
+                     + "WHERE p.tenant_id=? AND p.provider_kind='KILL_BILL' GROUP BY p.state")) {
             q.setString(1, tenantId);
             java.util.Map<String, Long> counts = new java.util.HashMap<>();
             try (ResultSet rs = q.executeQuery()) {
