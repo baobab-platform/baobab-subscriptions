@@ -18,4 +18,10 @@ Set `CP_SUBSCRIPTION_CURRENT_AUTHORITY_ENABLED=true`, `CP_SUBSCRIPTION_CURRENT_A
 
 `CpCurrentSubscriptionAuthorityTest` uses an isolated CP HTTP fake and proves current read acceptance, mismatch revision, forged tenant, incorrect classification, expired CP lease, wrong IAM bearer, exact operation ID and denied monetary preflight. The CP PR's handler tests cover authorised current read, operation revision mismatch, foreign tenant, human/wrong client and revoked registry status.
 
-**Pending for staging qualification:** actual CP/IAM connected credentials, route deployment, tenant association and legal-mandate evidence, full owner JSON-schema pin in the Subscriptions contract bundle, distributed revocation/revision race tests, and disposable Kill Bill 0.24.22 + PostgreSQL 17 integration with independent teardown.
+**Pending for staging qualification:** actual CP/IAM connected credentials, route deployment, tenant association and legal-mandate evidence, distributed revocation/revision race tests, and disposable Kill Bill 0.24.22 + PostgreSQL 17 integration with independent teardown.
+
+## Source adoption and evidence limits
+
+Subscriptions #51 merged the immutable ADR-SHARED-044 schema into the complete offline bundle (24 files, 17 entry points, 158 independently validated owner vectors). Current snapshot, request and deny-decision wire types use that packaged registry; string revisions, unknown statuses/fields and invented AUTHORISED outcomes are refused. The optional projection gate checks the current tuple before ensure/resume/usage and prior successful replay; resume uses the command revision. Remote CP checks occur outside write transactions with a local projection-change fence. See [connected onboarding](connected-onboarding.md) for configuration and the bounded snapshot consistency limit.
+
+Infrastructure #59 exercises actual issuer/CP/engine/native-store observations. Its COMMERCIAL fixture cannot qualify the independent INTERNAL positive or genuine Kill Bill runtime. No worker provider observation, commercial activation, monetary result or full onboarding is inferred from owner CI or a current CP read.
