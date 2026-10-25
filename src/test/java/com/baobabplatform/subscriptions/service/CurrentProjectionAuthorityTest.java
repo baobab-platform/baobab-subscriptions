@@ -41,14 +41,14 @@ class CurrentProjectionAuthorityTest {
             var depth = new AtomicInteger();
             var calls = new AtomicInteger();
             com.baobabplatform.subscriptions.store.BillingStore tracked = new com.baobabplatform.subscriptions.store.BillingStore() {
-                public <T> T transact(Work<T> work) {
+                @Override public <T> T transact(Work<T> work) {
                     return delegate.transact(tx -> { depth.incrementAndGet(); try { return work.run(tx); }
                         finally { depth.decrementAndGet(); } });
                 }
-                public boolean ping() { return delegate.ping(); }
-                public java.util.List<com.baobabplatform.subscriptions.store.OutboxEvent> events(String tenant) { return delegate.events(tenant); }
-                public java.util.List<com.baobabplatform.subscriptions.store.AuditRecord> audit(String tenant) { return delegate.audit(tenant); }
-                public void close() { }
+                @Override public boolean ping() { return delegate.ping(); }
+                @Override public java.util.List<com.baobabplatform.subscriptions.store.OutboxEvent> events(String tenant) { return delegate.events(tenant); }
+                @Override public java.util.List<com.baobabplatform.subscriptions.store.AuditRecord> audit(String tenant) { return delegate.audit(tenant); }
+                @Override public void close() { }
             };
             var duringAuthority = new java.util.concurrent.atomic.AtomicReference<Runnable>(() -> { });
             var service = new BillingService(tracked,new TemporaryProvider(),PaymentsPort.notConfigured(),
