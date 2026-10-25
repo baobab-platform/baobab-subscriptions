@@ -64,13 +64,13 @@ class ProviderWorkQueuePostgresTest {
                 pg.recordReconciliationAttempt(tenant, operationId,
                         false, "PROVIDER_TIMEOUT", afterLease.plusSeconds(i));
             }
-            assertEquals(1L, pg.reconciliationCounts(tenant).get("EXHAUSTED"));
+            assertEquals(1L, pg.reconciliationCounts(tenant).get("EXHAUSTED").longValue());
             assertEquals(0L, pg.reconciliationCounts("tn_unrelatedtenant")
-                    .getOrDefault("EXHAUSTED", 0L));
+                    .getOrDefault("EXHAUSTED", 0L).longValue());
         }
         try (PostgresBillingStore restarted = new PostgresBillingStore(url,
                 System.getenv("TEST_DATABASE_USER"), System.getenv("TEST_DATABASE_PASSWORD"))) {
-            assertEquals(1L, restarted.reconciliationCounts(tenant).get("EXHAUSTED"));
+            assertEquals(1L, restarted.reconciliationCounts(tenant).get("EXHAUSTED").longValue());
             assertFalse(restarted.dueProviderObservations(tenant, 25,
                             Instant.now().plus(Duration.ofDays(30))).stream()
                     .anyMatch(item -> item.operationId().equals(operationId)),
