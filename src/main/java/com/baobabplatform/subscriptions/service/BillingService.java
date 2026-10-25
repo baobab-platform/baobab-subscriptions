@@ -405,6 +405,10 @@ public final class BillingService {
             if (current.billingState() != BillingState.SUSPENDED) {
                 return new Result(200, Json.mapper().valueToTree(current), false);
             }
+            if (!provider.simulated() && current.billingPolicy().billingRequired()) {
+                throw new BillingException(409, "PROVIDER_EXECUTION_NOT_ENABLED",
+                        "external billing resumption requires qualified provider execution", false);
+            }
             return transition(tx, ctx, current, req, at, BillingState.ACTIVE, RESUMED, "resumed_at", "billing_projection.resumed");
         });
     }
