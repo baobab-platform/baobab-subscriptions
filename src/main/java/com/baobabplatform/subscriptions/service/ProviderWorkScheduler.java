@@ -41,8 +41,12 @@ public final class ProviderWorkScheduler implements AutoCloseable {
 
         static CpAuthority unavailable() {
             return new CpAuthority() {
-                @Override public boolean permitsObservation(ProviderOperation op) { return false; }
+                @Override public boolean permitsObservation(ProviderOperation op) {
+                    Objects.requireNonNull(op, "operation");
+                    return false;
+                }
                 @Override public Optional<KillBillAdapter.AuthorisedTerms> approveDispatch(ProviderOperation op) {
+                    Objects.requireNonNull(op, "operation");
                     return Optional.empty();
                 }
             };
