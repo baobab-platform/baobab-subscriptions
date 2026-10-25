@@ -34,7 +34,7 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 ADR-SUB-0003, 0014, 0015 and 0016 remain **Partial**, but provider
 custody now has real transaction-backed operations: PostgreSQL V5/V6 and a
 matching in-memory store implement tenant-scoped PREPARED journaling,
-lease-epoch fencing, provider reference uniqueness, a fail-closed UNKNOWN_OUTCOME
+lease-epoch fencing, old-revision uncertainty/supersession guards, provider reference uniqueness, a fail-closed UNKNOWN_OUTCOME
 and read-only observational reconciliation, with same-transaction audit.
 The BillingService prepares genuine-provider priced intent only after its
 CP-governed billing projection is persisted. No Kill Bill dispatch, new
