@@ -20,7 +20,7 @@ public record ProviderOperation(
         String reasonCode, Instant createdAt, Instant updatedAt) {
 
     public enum State {
-        PREPARED, SENT, CONVERGED, ALREADY_CONVERGED, RETRYABLE_FAILURE,
+        PREPARED, SUPERSEDED, SENT, CONVERGED, ALREADY_CONVERGED, RETRYABLE_FAILURE,
         PERMANENT_FAILURE, CONFLICT, UNKNOWN_OUTCOME, RECONCILED
     }
 
