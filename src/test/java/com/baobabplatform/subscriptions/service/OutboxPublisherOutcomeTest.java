@@ -73,6 +73,10 @@ class OutboxPublisherOutcomeTest {
         assertTrue(queue.retryable);
         assertEquals(OutboxPublisher.Outcome.RETRY_SCHEDULED, send(queue, event -> null));
         assertEquals("TRANSPORT_UNCERTAIN", queue.failureCode);
+        queue.next = new OutboxDeliveryQueue.Claim(queue.event, "publisher-one", 5,
+                OutboxDeliveryQueue.MAX_ATTEMPTS, Instant.now().plusSeconds(30));
+        assertEquals(OutboxPublisher.Outcome.QUARANTINED,
+                send(queue, event -> OutboxPublisher.Delivery.RETRYABLE_FAILURE));
         queue.accepted = false;
         assertEquals(OutboxPublisher.Outcome.LEASE_LOST,
                 send(queue, event -> OutboxPublisher.Delivery.RETRYABLE_FAILURE));
