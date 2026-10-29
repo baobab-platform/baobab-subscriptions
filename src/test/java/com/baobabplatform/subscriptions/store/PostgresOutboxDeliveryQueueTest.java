@@ -202,7 +202,7 @@ class PostgresOutboxDeliveryQueueTest {
             if (System.getenv("TEST_DATABASE_PASSWORD") != null) props.put("password", System.getenv("TEST_DATABASE_PASSWORD"));
             try (var con = DriverManager.getConnection(System.getenv("TEST_DATABASE_URL"), props);
                  var query = con.prepareStatement("""
-                         SELECT principal_id, approval_reference, reason_code
+                         SELECT principal_id, approval_reference, reason_code, evidence_reference
                            FROM billing.outbox_replay_audit WHERE event_id=? AND tenant_id=?
                          """)) {
                 query.setObject(1, id);
@@ -212,6 +212,7 @@ class PostgresOutboxDeliveryQueueTest {
                     assertEquals("operator-42", rs.getString(1));
                     assertEquals("approval/sub-02-123", rs.getString(2));
                     assertEquals("OPERATOR_REVIEW", rs.getString(3));
+                    assertEquals("evidence/replay-123", rs.getString(4));
                     assertFalse(rs.next());
                 }
             }
