@@ -115,6 +115,29 @@ class SignedHttpsEventTransportTest {
             var foreign = new OutboxEvent(event.eventId(), TYPE, "foreign", event.aggregateId(),
                     event.envelopeJson(), TIME);
             assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(foreign));
+            // Strictly reject an event with duplicate JSON keys even if a
+            // permissive parser would read the expected first/last value.
+            String duplicated = event.envelopeJson().replace(
+                    "\"type\":\"" + TYPE + "\",",
+                    "\"type\":\"" + TYPE + "\",\"type\":\"" + TYPE + "\",");
+            assertNotEquals(duplicated, event.envelopeJson());
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            duplicated, TIME)));
+            // The schema pin and payload are not producer-controlled.
+            var modified = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    Json.mapper().readTree(event.envelopeJson());
+            modified.put("dataschema", "https://contracts.example.invalid/forged.json");
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            modified.toString(), TIME)));
+            modified = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    Json.mapper().readTree(event.envelopeJson());
+            ((com.fasterxml.jackson.databind.node.ObjectNode) modified.path("data"))
+                    .put("billing_required", true).remove("billing_state");
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            modified.toString(), TIME)));
             assertEquals(2, calls.get());
         } finally {
             fake.stop(0);
