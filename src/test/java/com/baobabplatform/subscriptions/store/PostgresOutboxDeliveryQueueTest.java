@@ -58,7 +58,7 @@ class PostgresOutboxDeliveryQueueTest {
         try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
-            var queue = store.outboxDeliveryQueue();
+            var queue = current.outboxDeliveryQueue();
             assertTrue(queue.claim("foreign-" + tenant, "worker-a", Duration.ofSeconds(5)).isEmpty());
             var first = queue.claim(tenant, "worker-a", Duration.ofSeconds(5)).orElseThrow();
             assertEquals(id, first.event().eventId());
@@ -81,7 +81,7 @@ class PostgresOutboxDeliveryQueueTest {
         try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
-            var queue = store.outboxDeliveryQueue();
+            var queue = current.outboxDeliveryQueue();
             var first = queue.claim(tenant, "worker-a", Duration.ofSeconds(5)).orElseThrow();
             assertTrue(queue.failed(first, "TRANSPORT_UNCERTAIN", true));
             assertEquals(1, queue.health(tenant).retry());
@@ -108,7 +108,7 @@ class PostgresOutboxDeliveryQueueTest {
         try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
-            var queue = store.outboxDeliveryQueue();
+            var queue = current.outboxDeliveryQueue();
             var publisher = new OutboxPublisher(queue);
             assertTrue(publisher.runOne(tenant, "worker-a", Duration.ofSeconds(5),
                     event -> OutboxPublisher.Delivery.ACKNOWLEDGED));
@@ -124,7 +124,7 @@ class PostgresOutboxDeliveryQueueTest {
         try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
-            var queue = store.outboxDeliveryQueue();
+            var queue = current.outboxDeliveryQueue();
             for (int i = 0; i < 8; i++) {
                 var claim = queue.claim(tenant, "worker-a", Duration.ofSeconds(5)).orElseThrow();
                 assertEquals(i + 1, claim.attempt());
