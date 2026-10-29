@@ -38,6 +38,14 @@ in production. **Do not remove these fences.**
 | 0017 | Health, JSON logs, provider queue counts | Full outbox metrics, SLIs/SLO/alerts and incident qualification |
 | 0018 | PostgreSQL persistence/migrations and stateless app | HA, backups, PITR, restore/failover evidence |
 
+**Developer-environment mismatch:** the consumed baobab-dev 1.4.4 full image
+pins Java17 while the billing Maven build requires Java21. The old
+Codespace compose also selected PostgreSQL16 and a non-JDBC URL despite
+the Java/Pg17 service contract; the latter two are corrected in this PR.
+The Java21 profile requires owning-image verification (tracked in
+[baobab-dev #52](https://github.com/baobab-platform/baobab-dev/issues/52));
+this PR must not assert a functioning Java21 Codespace until then.
+
 **Documentation defects:** README still says Kill Bill adapter not implemented;
 alignment table predates the merged #46–52 work; ADR index is incomplete.
 The narrow P0-04A plan covers contract convergence, not the full domain.
