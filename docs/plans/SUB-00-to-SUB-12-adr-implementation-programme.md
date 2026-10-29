@@ -84,6 +84,21 @@ high-cardinality tenant identifiers. Future authorised replay needs an explicit
 ADR-consistent administrative surface and audit custody; do not edit rows by
 hand in production. Financial dispatch stays disabled independent of this gate.
 
+## SUB-02 engineering branch — 29 October 2026
+
+Proposed, **not accepted or deployed**: signed HTTPS binding, fresh IAM
+publisher gate, bounded/fair worker, V11 72-hour retry limit, current
+operator-authority replay seam and append-only replay record. Details and
+remaining acceptance conditions are maintained in
+[SUB-02 publication runbook](../development/sub-02-publication-and-replay.md).
+The Shared FB-04 signed ingress is ERP→CP only and is still Proposed;
+the closed CP ingress accepts no Subscriptions events. Neither a real
+receiving endpoint nor a registered issuer-active Subscriptions publisher
+is certified. Do not enable dispatch, auto-start workers, merge this
+claim into general publication readiness or mark SUB-02 complete until
+the owning contracts, IAM/CP/Infrastructure work and connected evidence
+are satisfied.
+
 ## Explicit remaining risks
 
 - The consumed baobab-dev 1.4.4 full image pins Java17 but this engine

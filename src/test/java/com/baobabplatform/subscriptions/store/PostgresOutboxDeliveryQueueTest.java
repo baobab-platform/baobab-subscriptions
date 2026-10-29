@@ -139,4 +139,84 @@ class PostgresOutboxDeliveryQueueTest {
             assertEquals(8, queue.health(tenant).totalAttempts());
         }
     }
+
+    @Test
+    void retryHorizonExpiresAfterSeventyTwoHours() throws Exception {
+        open();
+        try (PostgresBillingStore current = store) {
+            UUID id = UUID.randomUUID();
+            seed(id);
+            var queue = current.outboxDeliveryQueue();
+            queue.claim(tenant, "worker-one", Duration.ofSeconds(10)).orElseThrow();
+            Properties props = new Properties();
+            if (System.getenv("TEST_DATABASE_USER") != null) props.put("user", System.getenv("TEST_DATABASE_USER"));
+            if (System.getenv("TEST_DATABASE_PASSWORD") != null) props.put("password", System.getenv("TEST_DATABASE_PASSWORD"));
+            try (var con = DriverManager.getConnection(System.getenv("TEST_DATABASE_URL"), props);
+                 var statement = con.prepareStatement("""
+                         UPDATE billing.outbox SET first_attempt_at=now()-INTERVAL '73 hours',
+                           lease_expires_at=now()-INTERVAL '1 second'
+                         WHERE tenant_id=? AND event_id=?
+                         """)) {
+                statement.setString(1, tenant);
+                statement.setObject(2, id);
+                assertEquals(1, statement.executeUpdate());
+            }
+            assertTrue(queue.claim(tenant, "worker-two", Duration.ofSeconds(10)).isEmpty());
+            assertEquals(1L, queue.health(tenant).quarantined());
+        }
+    }
+
+    @Test
+    void replayRequiresCurrentApprovalAndPersistsImmutableEvidence() throws Exception {
+        open();
+        try (PostgresBillingStore current = store) {
+            UUID id = UUID.randomUUID();
+            seed(id);
+            var queue = current.outboxDeliveryQueue();
+            var first = queue.claim(tenant, "worker-one", Duration.ofSeconds(10)).orElseThrow();
+            assertTrue(queue.failed(first, "INVALID_CONTRACT", false));
+            var request = new com.baobabplatform.subscriptions.service.OutboxReplayService.Request(
+                    tenant, id, "OPERATOR_REVIEW", "evidence/replay-123");
+            var denied = new com.baobabplatform.subscriptions.service.OutboxReplayService(
+                    queue, com.baobabplatform.subscriptions.service.OutboxReplayService.CurrentReplayAuthority.unavailable());
+            assertThrows(SecurityException.class, () -> denied.replay(request));
+            assertEquals(1L, queue.health(tenant).quarantined());
+            var mismatch = new com.baobabplatform.subscriptions.service.OutboxReplayService(queue,
+                    req -> java.util.Optional.of(new com.baobabplatform.subscriptions.service.OutboxReplayService.Authorization(
+                            "other-tenant", id, "operator-42", "approval/sub-02-123")));
+            assertThrows(SecurityException.class, () -> mismatch.replay(request));
+            var approved = new com.baobabplatform.subscriptions.service.OutboxReplayService(queue,
+                    req -> java.util.Optional.of(new com.baobabplatform.subscriptions.service.OutboxReplayService.Authorization(
+                            tenant, id, "operator-42", "approval/sub-02-123")));
+            assertTrue(approved.replay(request));
+            assertFalse(approved.replay(request));
+            var replayed = queue.claim(tenant, "worker-two", Duration.ofSeconds(10)).orElseThrow();
+            assertEquals(id, replayed.event().eventId());
+            assertEquals(com.baobabplatform.subscriptions.json.Json.mapper()
+                    .readTree(first.event().envelopeJson()),
+                    com.baobabplatform.subscriptions.json.Json.mapper()
+                    .readTree(replayed.event().envelopeJson()));
+            assertEquals(1, replayed.attempt());
+            Properties props = new Properties();
+            if (System.getenv("TEST_DATABASE_USER") != null) props.put("user", System.getenv("TEST_DATABASE_USER"));
+            if (System.getenv("TEST_DATABASE_PASSWORD") != null) props.put("password", System.getenv("TEST_DATABASE_PASSWORD"));
+            try (var con = DriverManager.getConnection(System.getenv("TEST_DATABASE_URL"), props);
+                 var query = con.prepareStatement("""
+                         SELECT principal_id, approval_reference, reason_code, evidence_reference
+                           FROM billing.outbox_replay_audit WHERE event_id=? AND tenant_id=?
+                         """)) {
+                query.setObject(1, id);
+                query.setString(2, tenant);
+                try (var rs = query.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals("operator-42", rs.getString(1));
+                    assertEquals("approval/sub-02-123", rs.getString(2));
+                    assertEquals("OPERATOR_REVIEW", rs.getString(3));
+                    assertEquals("evidence/replay-123", rs.getString(4));
+                    assertFalse(rs.next());
+                }
+            }
+        }
+    }
+
 }
