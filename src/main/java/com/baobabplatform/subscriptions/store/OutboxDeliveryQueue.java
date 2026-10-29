@@ -10,6 +10,9 @@ import java.util.Optional;
  * replayable with the original immutable event ID (ADR-SUB-0014).
  */
 public interface OutboxDeliveryQueue {
+    /** Platform outbox delivery attempt ceiling, including crashed claims. */
+    int MAX_ATTEMPTS = 8;
+
     record Claim(OutboxEvent event, String worker, long leaseEpoch, int attempt,
                  Instant leaseExpiresAt) { }
 
