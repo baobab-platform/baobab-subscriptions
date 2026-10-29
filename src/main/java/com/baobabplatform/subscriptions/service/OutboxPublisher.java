@@ -62,7 +62,9 @@ public final class OutboxPublisher {
             case ACKNOWLEDGED -> queue.published(claim) ? Outcome.ACKNOWLEDGED : Outcome.LEASE_LOST;
             case RETRYABLE_FAILURE -> queue.failed(claim,
                     uncertain ? "TRANSPORT_UNCERTAIN" : "TRANSPORT_RETRYABLE", true)
-                    ? Outcome.RETRY_SCHEDULED : Outcome.LEASE_LOST;
+                    ? (claim.attempt() >= OutboxDeliveryQueue.MAX_ATTEMPTS
+                            ? Outcome.QUARANTINED : Outcome.RETRY_SCHEDULED)
+                    : Outcome.LEASE_LOST;
             case PERMANENT_FAILURE -> queue.failed(claim, "TRANSPORT_PERMANENT", false)
                     ? Outcome.QUARANTINED : Outcome.LEASE_LOST;
         };
