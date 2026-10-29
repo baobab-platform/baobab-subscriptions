@@ -67,6 +67,10 @@ class PostgresOutboxDeliveryQueueTest {
             var forged = new OutboxDeliveryQueue.Claim(first.event(), "worker-b", first.leaseEpoch(),
                     first.attempt(), first.leaseExpiresAt());
             assertFalse(queue.published(forged));
+            var forgedAttempt = new OutboxDeliveryQueue.Claim(first.event(), first.worker(), first.leaseEpoch(),
+                    99, first.leaseExpiresAt());
+            assertFalse(queue.published(forgedAttempt));
+            assertFalse(queue.failed(forgedAttempt, "TRANSPORT_UNCERTAIN", true));
             assertTrue(queue.published(first));
             assertFalse(queue.published(first));
             assertTrue(queue.claim(tenant, "worker-a", Duration.ofSeconds(5)).isEmpty());
