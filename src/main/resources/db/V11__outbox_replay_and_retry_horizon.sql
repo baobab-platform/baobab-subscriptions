@@ -16,12 +16,14 @@ CREATE TABLE billing.outbox_replay_audit (
     principal_id text NOT NULL,
     approval_reference text NOT NULL,
     reason_code text NOT NULL,
+    evidence_reference text NOT NULL,
     prior_attempt_count integer NOT NULL,
     CONSTRAINT outbox_replay_approval_one_use
         UNIQUE (tenant_id,event_id,approval_reference),
     recorded_at timestamptz NOT NULL DEFAULT now(),
     CHECK(length(principal_id) BETWEEN 3 AND 200),
     CHECK(length(approval_reference) BETWEEN 8 AND 256),
+    CHECK(length(evidence_reference) BETWEEN 8 AND 256),
     CHECK(reason_code ~ '^[A-Z][A-Z0-9_]{2,47}$')
 );
 CREATE INDEX outbox_replay_audit_tenant_event
