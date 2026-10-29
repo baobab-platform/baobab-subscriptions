@@ -35,13 +35,19 @@ public final class OutboxPublicationWorker implements AutoCloseable {
         void requireCurrent();
     }
 
-    public static PublisherAuthority iam(WorkloadAuthenticator eventBrokerAuthenticator,
+    public static PublisherAuthority iam(java.net.URI issuer, java.net.URI jwksUri,
             CurrentTokenStatus status, Path bearerFile, String clientId) {
-        Objects.requireNonNull(eventBrokerAuthenticator).withCurrentStatus(Objects.requireNonNull(status));
+        Objects.requireNonNull(issuer);
+        Objects.requireNonNull(jwksUri);
+        Objects.requireNonNull(status);
         if (bearerFile == null || !bearerFile.isAbsolute()
                 || clientId == null || !clientId.matches("[A-Za-z0-9._:-]{3,128}")) {
             throw new IllegalArgumentException("current event-broker publisher identity required");
         }
+        // Enforce the Shared scope's fixed resource-server audience rather
+        // than accepting a caller-supplied authenticator for another engine.
+        WorkloadAuthenticator eventBrokerAuthenticator = WorkloadAuthenticator.remote(
+                issuer, jwksUri, "event-broker", Set.of(clientId)).withCurrentStatus(status);
         return () -> {
             byte[] bytes;
             try (var in = Files.newInputStream(bearerFile)) {
