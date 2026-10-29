@@ -86,6 +86,10 @@ hand in production. Financial dispatch stays disabled independent of this gate.
 
 ## Explicit remaining risks
 
+- The consumed baobab-dev 1.4.4 full image pins Java17 but this engine
+  requires Java21. PostgreSQL17/JDBC Codespace drift is corrected in SUB-00;
+  the Java21 published-image profile remains tracked in
+  [baobab-dev #52](https://github.com/baobab-platform/baobab-dev/issues/52).
 - Existing projection commands still have a bounded CP read-to-commit window;
   distributed atomic CP and Subscriptions commits are not claimed.
 - Existing provider synthetic tests are not live Kill Bill 0.24.x/PostgreSQL
