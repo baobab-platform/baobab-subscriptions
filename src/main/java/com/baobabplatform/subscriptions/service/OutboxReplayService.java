@@ -57,6 +57,7 @@ public final class OutboxReplayService {
         // The approved reference and reason are committed atomically with
         // the state change, preserving original event id and envelope.
         return queue.replay(request.tenantId(), request.eventId(),
-                permit.verifiedPrincipal(), permit.approvalReference(), request.reasonCode());
+                permit.verifiedPrincipal(), permit.approvalReference(), request.reasonCode(),
+                request.evidenceReference());
     }
 }
