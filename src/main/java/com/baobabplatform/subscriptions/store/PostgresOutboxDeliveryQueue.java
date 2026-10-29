@@ -181,12 +181,13 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
 
     @Override
     public boolean replay(String tenantId, UUID eventId, String verifiedPrincipal,
-            String approvalReference, String safeReasonCode) {
+            String approvalReference, String safeReasonCode, String evidenceReference) {
         validTenant(tenantId);
         java.util.Objects.requireNonNull(eventId);
         if (verifiedPrincipal == null || !verifiedPrincipal.matches("[A-Za-z0-9._:@/-]{3,200}")
                 || approvalReference == null || !approvalReference.matches("[A-Za-z0-9._:/-]{8,256}")
-                || safeReasonCode == null || !safeReasonCode.matches("[A-Z][A-Z0-9_]{2,47}")) {
+                || safeReasonCode == null || !safeReasonCode.matches("[A-Z][A-Z0-9_]{2,47}")
+                || evidenceReference == null || !evidenceReference.matches("[A-Za-z0-9._:/-]{8,256}")) {
             throw new IllegalArgumentException("current operator, approval and safe reason required");
         }
         return transact(connection -> {
@@ -217,8 +218,8 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
             try (PreparedStatement audit = connection.prepareStatement("""
                     INSERT INTO billing.outbox_replay_audit
                     (replay_id,event_id,tenant_id,principal_id,approval_reference,
-                        reason_code,prior_attempt_count)
-                    VALUES (?,?,?,?,?,?,?)
+                        reason_code,evidence_reference,prior_attempt_count)
+                    VALUES (?,?,?,?,?,?,?,?)
                     """)) {
                 audit.setObject(1, UUID.randomUUID());
                 audit.setObject(2, eventId);
@@ -226,7 +227,8 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
                 audit.setString(4, verifiedPrincipal);
                 audit.setString(5, approvalReference);
                 audit.setString(6, safeReasonCode);
-                audit.setInt(7, oldAttempts);
+                audit.setString(7, evidenceReference);
+                audit.setInt(8, oldAttempts);
                 audit.executeUpdate();
             }
             return true;
