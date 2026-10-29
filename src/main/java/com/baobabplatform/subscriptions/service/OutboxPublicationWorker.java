@@ -123,13 +123,18 @@ public final class OutboxPublicationWorker implements AutoCloseable {
         try {
             Tick t = runOnce();
             // No unbounded tenant/event/worker identifiers or payloads in metrics/logging.
-            Log.info("billing.outbox.publisher.tick", Map.of(
-                    "attempted", t.attempted(), "acknowledged", t.acknowledged(),
-                    "retry_scheduled", t.retryScheduled(), "quarantined_now", t.quarantinedNow(),
-                    "lost_lease", t.lostLease(), "tenants_checked", t.tenantsChecked(),
-                    "pending", t.pending(), "in_flight", t.inFlight(),
-                    "retry", t.retry(), "quarantined", t.quarantined(),
-                    "oldest_unpublished_seconds", t.oldestUnpublishedSeconds()));
+            Log.info("billing.outbox.publisher.tick", Map.ofEntries(
+                    Map.entry("attempted", t.attempted()),
+                    Map.entry("acknowledged", t.acknowledged()),
+                    Map.entry("retry_scheduled", t.retryScheduled()),
+                    Map.entry("quarantined_now", t.quarantinedNow()),
+                    Map.entry("lost_lease", t.lostLease()),
+                    Map.entry("tenants_checked", t.tenantsChecked()),
+                    Map.entry("pending", t.pending()),
+                    Map.entry("in_flight", t.inFlight()),
+                    Map.entry("retry", t.retry()),
+                    Map.entry("quarantined", t.quarantined()),
+                    Map.entry("oldest_unpublished_seconds", t.oldestUnpublishedSeconds())));
         } catch (RuntimeException rejected) {
             Log.warn("billing.outbox.publisher.blocked",
                     Map.of("reason", rejected.getClass().getSimpleName()));
