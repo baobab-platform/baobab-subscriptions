@@ -20,7 +20,7 @@ FROM eclipse-temurin:25-jre-noble@sha256:d9a39a23634650173f1e2bbc176227af9728587
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="baobab-subscriptions" \
-      org.opencontainers.image.description="Baobab headless subscription billing engine (temporary provider; Kill Bill not yet integrated)" \
+      org.opencontainers.image.description="Baobab headless subscription billing engine (Kill Bill adapter unqualified; dispatch disabled)" \
       org.opencontainers.image.source="https://github.com/baobab-platform/baobab-subscriptions" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${REVISION}" \
@@ -28,16 +28,21 @@ LABEL org.opencontainers.image.title="baobab-subscriptions" \
       org.opencontainers.image.vendor="Baobab Platform"
 # CVE-2026-84782 (HIGH): the pinned eclipse-temurin base ships openssl and
 # libssl3t64 3.0.13-0ubuntu3.15; Ubuntu fixed it in 3.0.13-0ubuntu3.16.
-# Upgrade both from the signed noble-security archive, and fail the build
+# CVE-2026-111497 (HIGH): libbrotli1 1.1.0-2build2 must be upgraded to
+# at least 1.1.0-2ubuntu0.1, without suppressing the container scan.
+# Upgrade from the signed noble-security archive, and fail the build
 # unless the installed version is at least the fixed one. Remove once the
 # pinned base digest ships >= 3.0.13-0ubuntu3.16.
 RUN set -eu; apt-get update; \
-    apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl; \
+    apt-get install -y --no-install-recommends --only-upgrade libssl3t64 openssl libbrotli1; \
     for pkg in libssl3t64 openssl; do \
       version=$(dpkg-query -W -f '${Version}' "$pkg"); \
       dpkg --compare-versions "$version" ge 3.0.13-0ubuntu3.16 \
         || { echo "$pkg $version is older than the fixed 3.0.13-0ubuntu3.16" >&2; exit 1; }; \
     done; \
+    brotli_version=$(dpkg-query -W -f '${Version}' libbrotli1); \
+    dpkg --compare-versions "$brotli_version" ge 1.1.0-2ubuntu0.1 \
+      || { echo "libbrotli1 $brotli_version predates fixed 1.1.0-2ubuntu0.1" >&2; exit 1; }; \
     rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 baobab \
  && useradd --system --uid 10001 --gid baobab --home-dir /app --shell /usr/sbin/nologin baobab
