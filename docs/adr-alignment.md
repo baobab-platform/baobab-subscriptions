@@ -2,6 +2,8 @@
 
 This page records how far the running service implements ADR-SUB-0001 to ADR-SUB-0018. It is a status record, not a decision: the ADRs govern. It is updated with every PR that changes the status of an ADR.
 
+**Updated 29 October 2026:** This matrix includes the merged provider/current-authority work through PR #52 and the proposed SUB-01 outbox custody gate. Native provider certification and final-head CI are distinct from synthetic tests. See [the implementation programme](plans/SUB-00-to-SUB-12-adr-implementation-programme.md) and [18-ADR audit](assessments/2026-10-29-subscriptions-scaffold-audit.md).
+
 **Legend:**
 
 - **Implemented:** the ADR's normative requirements that apply today are met, with tests.
@@ -10,24 +12,24 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 
 | ADR | Subject | Status | What exists | What remains |
 |---|---|---|---|---|
-| 0001 | Kill Bill behind a Baobab façade | Partial | The Baobab Billing API, the `BillingProvider` port, the `TemporaryProvider` (simulated, refused in production), workload identity, idempotency, tenant isolation | The Kill Bill adapter (see 0015) |
-| 0002 | Domain model and authority | Partial | `BillingSubscriptionProjection` (a projection, never authoritative), `UsageRecord`; the Control Plane stays authoritative for ProductSubscription, classification and entitlement | `BillingAccountProjection`, `BillingTerms`, `BillingCycle`, `RatedUsage`, `Charge`, `Credit`, `InvoiceProjection` (0005, 0008, 0009, 0011, 0012) |
-| 0003 | Projection lifecycle, sync and reconciliation | Partial | The §5 lifecycle; operational condition separate from lifecycle (§11); revision-aware ensure and commands, so an out-of-order older revision never regresses state (§16); suspend, resume and terminate, with `TERMINATED` final (§9, §10, §35); transactional outbox (§19); readiness as separate facts (§46) | Event-driven intake and the inbox/deduplication store (§14, §20); mandatory scheduled reconciliation and its records (§22-27, §48-50); delayed-effect termination with `TERMINATING` held while finalisation runs (§36); provider retry and unknown-outcome handling (§37-40, which need a real provider) |
-| 0004 | Usage metering and rating | Partial | Usage metered for every type, once per source; billable only where the policy charges | Aggregation, rating, usage windows, late-usage handling |
-| 0005 | Catalogue, pricing, billing terms | Not started | — | Every requirement. Until this ADR is implemented, priced billing reports `PRICING_CONFIGURATION_MISSING`. |
-| 0006 | Classification-driven billing policy | Partial | The policy comes from Shared `billing-policy.yaml` and classification is never inferred (§3, §53-55); INTERNAL is zero charge, metered, and never touches payments (§9-15, §43); honest readiness with the §58 blockers, so the temporary provider never claims commercial readiness (§56-57); classification changes can come only from the Control Plane (§68) | `BillingDecision` records (§36); effective-dated transitions without retrospective billing (§29-34); policy version history (§23) |
-| 0007 | Commercial lifecycle, amendments, renewal | Partial | Suspend, resume and terminate as governed, revision-aware commands | Amendments, renewal, effective-dated transitions |
-| 0008 | Billing periods and proration | Not started | — | Every requirement |
-| 0009 | Charges, adjustments, credits | Not started | — | Every requirement. INTERNAL never produces monetary obligations, and that guarantee already holds. |
-| 0010 | Tax | Not started | — | Every requirement |
-| 0011 | Billing account and payer | Not started | — | Every requirement. Until this ADR is implemented, priced billing reports `BILLING_ACCOUNT_MISSING`. |
-| 0012 | Billing cycles and invoice projection | Not started | — | Every requirement |
-| 0013 | Payment obligation handoff | Not started | `PaymentsPort` (not configured); zero-charge policies never consult it | `FinancialObligation`, the handoff to `baobab-payments`, collection state and delinquency |
-| 0014 | Events and transactional messaging | Partial | Local ACID transactions with a transactional outbox, canonical versioned envelopes, idempotent handlers, revision checks | The outbox relay, the consumer inbox, dead-letter and quarantine handling, cross-engine reconciliation |
-| 0015 | Kill Bill adapter and provider portability | Partial | The provider-neutral `BillingProvider` port; provider state kept apart from projection state | `KillBillAdapter`, with a Kill Bill release and a PostgreSQL version pinned after verification (ADR-SUB-0001 §7) |
-| 0016 | Security, workload identity, audit | Partial | Workload-only JWTs with the issuer, audience, allowed-client and per-route-scope checks (§7-10); trusted tenant context and tenant-scoped lookups with cross-tenant not-found (§11-14); a caller cannot manufacture INTERNAL (§17-19); controlled commands (§20-23); idempotency with mismatch refusal (§24-28); revision-aware mutation (§29); append-only audit records in the same transaction (§35-36, §40); problems that carry no secrets (§48); current CP INTERNAL assessments before replay; verified-client founding receipt provenance and owner envelope/payload validation (§31-33) | General subscription lifecycle event intake/authentication beyond the bounded founding inbox (§31-33); audit read access and retention (§41); provider credential isolation (§44, which needs a real provider) |
-| 0017 | Observability and billing correctness | Partial | Liveness and readiness endpoints that report commercial readiness honestly; JSON logs with correlation IDs | Metrics with bounded labels, SLOs, pipeline and reconciliation health, alerts |
-| 0018 | Availability, backup, DR | Partial | PostgreSQL persistence with versioned migrations; a stateless service; in-memory state refused in staging and production | HA topology, backups and PITR, RPO/RTO, restore drills |
+| 0001 | Kill Bill behind Baobab façade | Partial | Baobab API, temporary provider, KillBillAdapter, bounded worker and provider operation journal | Live Kill Bill/DB certification, commercial authority and protected dispatch |
+| 0002 | Domain model and authority | Partial | Revisioned CP-owned ProductSubscription projection and usage, tenant isolation | Billing accounts, immutable terms, cycles, charges and invoices |
+| 0003 | Projection lifecycle, sync and reconciliation | Partial | CP current reader, authenticated lifecycle inbox, revision controls, provider observation | Durable lifecycle convergence, scheduled reconciliation and delayed termination |
+| 0004 | Usage metering and rating | Partial | Deduplicated usage intake | Aggregation, rating, windows and late usage |
+| 0005 | Catalogue, pricing and billing terms | Not started | No qualified price/term authority | Versioned catalogue and effective-dated commercial terms |
+| 0006 | Classification-driven monetary policy | Partial | Shared policy, INTERNAL zero-charge, current CP checks, commercial BLOCKED | Monetary decision provenance, effective-dated transitions |
+| 0007 | Lifecycle amendments and renewal | Partial | Governed suspend/resume/terminate | Amendments, renewal and effective dates |
+| 0008 | Billing periods and proration | Not started | — | Period/calendar engine |
+| 0009 | Charges, adjustments and credits | Not started | — | Monetary calculation and correction |
+| 0010 | Tax | Not started | — | Tax jurisdiction, exemptions, provenance |
+| 0011 | Billing account and payer | Not started | — | Payer/mandate/invoice recipient authority |
+| 0012 | Billing cycles and invoices | Not started | — | Billing cycle/finalisation/invoice projection |
+| 0013 | Payment obligation handoff | Not started | PaymentsPort deny-only; INTERNAL cannot pay | Payments/ERP obligations and settlement convergence |
+| 0014 | Events and transactional messaging | Partial | Transactional outbox, CP/founding inbox, V10 lease-fenced custody, retry/quarantine and simulated ACK seam | Live authenticated transport, publishing worker, authorised replay, reconciliation |
+| 0015 | Kill Bill adapter and portability | Partial | KillBillAdapter, V5–V9 journal, observation-only worker | Native provider certification and authorised dispatch |
+| 0016 | Security and audit | Partial | Workload JWT/issuer-current checks, tenant/revision/idempotency fences and audit | Protected credential, authority and read-access qualification |
+| 0017 | Observability | Partial | Health, logs, provider counts and SUB-01 outbox health read model | SLIs/SLOs, metrics/alerts, incidents |
+| 0018 | Availability and DR | Partial | PostgreSQL persistence, stateless app and V10 crash-recoverable custody | HA, PITR/restore and failover evidence |
 
 ## Kill Bill adapter/worker scaffold — 25 October 2026
 
