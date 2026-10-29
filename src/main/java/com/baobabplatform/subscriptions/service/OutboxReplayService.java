@@ -25,7 +25,7 @@ public final class OutboxReplayService {
         Optional<Authorization> approve(Request request);
 
         static CurrentReplayAuthority unavailable() {
-            return request -> Optional.empty();
+            return request -> { Objects.requireNonNull(request); return Optional.empty(); };
         }
     }
 
