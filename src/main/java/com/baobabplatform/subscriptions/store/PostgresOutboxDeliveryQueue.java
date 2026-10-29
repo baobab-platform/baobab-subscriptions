@@ -123,7 +123,7 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
                         failure_code=NULL
                     WHERE event_id=? AND tenant_id=? AND lease_epoch=?
                         AND lease_owner=? AND publication_status='IN_FLIGHT'
-                        AND lease_expires_at>now()
+                        AND lease_expires_at>now() AND attempt_count=?
                     """)) {
                 bindClaim(statement, claim);
                 return statement.executeUpdate() == 1;
@@ -149,7 +149,7 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
                         last_failure_at=now()
                     WHERE event_id=? AND tenant_id=? AND lease_epoch=?
                         AND lease_owner=? AND publication_status='IN_FLIGHT'
-                        AND lease_expires_at>now()
+                        AND lease_expires_at>now() AND attempt_count=?
                     """)) {
                 statement.setString(1, scheduleRetry ? "RETRY" : "QUARANTINED");
                 statement.setLong(2, retrySeconds);
@@ -158,6 +158,7 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
                 statement.setString(5, claim.event().tenantId());
                 statement.setLong(6, claim.leaseEpoch());
                 statement.setString(7, claim.worker());
+                statement.setInt(8, claim.attempt());
                 return statement.executeUpdate() == 1;
             }
         });
@@ -168,6 +169,7 @@ public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
         statement.setString(2, claim.event().tenantId());
         statement.setLong(3, claim.leaseEpoch());
         statement.setString(4, claim.worker());
+        statement.setInt(5, claim.attempt());
     }
 
     @Override
