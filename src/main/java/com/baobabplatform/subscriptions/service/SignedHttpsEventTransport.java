@@ -1,6 +1,8 @@
 package com.baobabplatform.subscriptions.service;
 
 import com.baobabplatform.subscriptions.json.Json;
+import com.baobabplatform.subscriptions.contract.Contracts;
+import com.fasterxml.jackson.core.JsonParser;
 import com.baobabplatform.subscriptions.store.OutboxEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +43,12 @@ public final class SignedHttpsEventTransport implements OutboxPublisher.Transpor
             DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss'Z'").withZone(ZoneOffset.UTC);
     private static final Set<Integer> PERMANENT = Set.of(400, 409, 413, 422);
     private static final int MAX_EVENT_BYTES = 1024 * 1024;
+    private static final Map<String, String> PAYLOAD_TYPES = Map.of(
+            "com.baobab-platform.subscriptions.billing-subscription.created.v1", "BillingSubscriptionCreated",
+            "com.baobab-platform.subscriptions.billing-subscription.resumed.v1", "BillingSubscriptionResumed",
+            "com.baobab-platform.subscriptions.billing-subscription.suspended.v1", "BillingSubscriptionSuspended",
+            "com.baobab-platform.subscriptions.billing-subscription.terminated.v1", "BillingSubscriptionTerminated",
+            "com.baobab-platform.subscriptions.usage.recorded.v1", "UsageRecorded");
     private final URI endpoint;
     private final String recipient;
     private final String keyId;
@@ -106,17 +115,29 @@ public final class SignedHttpsEventTransport implements OutboxPublisher.Transpor
 
     private static boolean matchesEnvelope(OutboxEvent event) {
         try {
-            JsonNode json = Json.mapper().readTree(event.envelopeJson());
-            return json != null && json.isObject() && event.eventId().toString().equals(json.path("id").asText())
-                    && "urn:baobab-platform:service:baobab-subscriptions".equals(json.path("source").asText())
-                    && event.eventType().equals(json.path("type").asText())
-                    && event.tenantId().equals(json.path("tenantid").asText())
-                    && Set.of(
-                            "com.baobab-platform.subscriptions.billing-subscription.created.v1",
-                            "com.baobab-platform.subscriptions.billing-subscription.resumed.v1",
-                            "com.baobab-platform.subscriptions.billing-subscription.suspended.v1",
-                            "com.baobab-platform.subscriptions.billing-subscription.terminated.v1",
-                            "com.baobab-platform.subscriptions.usage.recorded.v1").contains(event.eventType());
+            // Duplicate JSON keys can cause a consumer to see a different
+            // event than the sender validated. Reject them before signing.
+            JsonNode json = Json.mapper().reader()
+                    .with(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                    .readTree(event.envelopeJson());
+            String definition = PAYLOAD_TYPES.get(event.eventType());
+            if (json == null || !json.isObject() || definition == null
+                    || !event.eventId().toString().equals(json.path("id").asText())
+                    || !"urn:baobab-platform:service:baobab-subscriptions".equals(json.path("source").asText())
+                    || !event.eventType().equals(json.path("type").asText())
+                    || !event.tenantId().equals(json.path("tenantid").asText())
+                    || !"tenant".equals(json.path("baobabscope").asText())
+                    || !("billing-subscription:" + event.aggregateId()).equals(json.path("subject").asText())
+                    || !(Contracts.BASE + Contracts.def(Contracts.EVENTS, definition))
+                            .equals(json.path("dataschema").asText())
+                    || !java.time.Instant.parse(json.path("time").asText())
+                            .truncatedTo(java.time.temporal.ChronoUnit.MICROS)
+                            .equals(event.occurredAt().truncatedTo(java.time.temporal.ChronoUnit.MICROS))) {
+                return false;
+            }
+            return Contracts.problems(Contracts.ENVELOPE, json).isEmpty()
+                    && Contracts.problems(Contracts.def(Contracts.EVENTS, definition),
+                            json.path("data")).isEmpty();
         } catch (RuntimeException | IOException invalid) {
             return false;
         }

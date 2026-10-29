@@ -3,6 +3,8 @@ package com.baobabplatform.subscriptions.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.baobabplatform.subscriptions.store.OutboxEvent;
+import com.baobabplatform.subscriptions.json.Json;
+import com.baobabplatform.subscriptions.contract.Contracts;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -31,10 +33,31 @@ class SignedHttpsEventTransportTest {
 
     private OutboxEvent event() {
         UUID id = UUID.randomUUID();
-        String envelope = "{\"specversion\":\"1.0\",\"id\":\"" + id
-                + "\",\"type\":\"" + TYPE + "\",\"source\":\"urn:baobab-platform:service:baobab-subscriptions\","
-                + "\"tenantid\":\"tenant-1\",\"data\":{}}";
-        return new OutboxEvent(id, TYPE, "tenant-1", "billing-1", envelope, TIME);
+        var envelope = Json.mapper().createObjectNode()
+                .put("specversion", "1.0")
+                .put("id", id.toString())
+                .put("type", TYPE)
+                .put("source", "urn:baobab-platform:service:baobab-subscriptions")
+                .put("subject", "billing-subscription:bsub_test01")
+                .put("time", TIME.toString())
+                .put("datacontenttype", "application/json")
+                .put("dataschema", Contracts.BASE
+                        + Contracts.def(Contracts.EVENTS, "BillingSubscriptionCreated"))
+                .put("baobabscope", "tenant")
+                .put("correlationid", UUID.randomUUID().toString())
+                .put("tenantid", "tn_test01");
+        var data = Json.mapper().createObjectNode()
+                .put("billing_subscription_id", "bsub_test01")
+                .put("product_subscription_id", "sub_test01")
+                .put("tenant_id", "tn_test01")
+                .put("authoritative_revision", 1)
+                .put("subscription_type", "INTERNAL")
+                .put("billing_required", false)
+                .put("billing_state", "ACTIVE")
+                .put("simulated", true)
+                .put("created_at", TIME.toString());
+        envelope.set("data", data);
+        return new OutboxEvent(id, TYPE, "tn_test01", "bsub_test01", envelope.toString(), TIME);
     }
 
     private static String sign(String recipient, String key, String stamp, byte[] body, byte[] secret) throws Exception {
@@ -92,6 +115,29 @@ class SignedHttpsEventTransportTest {
             var foreign = new OutboxEvent(event.eventId(), TYPE, "foreign", event.aggregateId(),
                     event.envelopeJson(), TIME);
             assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(foreign));
+            // Strictly reject an event with duplicate JSON keys even if a
+            // permissive parser would read the expected first/last value.
+            String duplicated = event.envelopeJson().replace(
+                    "\"type\":\"" + TYPE + "\",",
+                    "\"type\":\"" + TYPE + "\",\"type\":\"" + TYPE + "\",");
+            assertNotEquals(duplicated, event.envelopeJson());
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            duplicated, TIME)));
+            // The schema pin and payload are not producer-controlled.
+            var modified = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    Json.mapper().readTree(event.envelopeJson());
+            modified.put("dataschema", "https://contracts.example.invalid/forged.json");
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            modified.toString(), TIME)));
+            modified = (com.fasterxml.jackson.databind.node.ObjectNode)
+                    Json.mapper().readTree(event.envelopeJson());
+            ((com.fasterxml.jackson.databind.node.ObjectNode) modified.path("data"))
+                    .put("billing_required", true).remove("billing_state");
+            assertEquals(OutboxPublisher.Delivery.PERMANENT_FAILURE, transport.deliver(
+                    new OutboxEvent(event.eventId(), TYPE, event.tenantId(), event.aggregateId(),
+                            modified.toString(), TIME)));
             assertEquals(2, calls.get());
         } finally {
             fake.stop(0);
