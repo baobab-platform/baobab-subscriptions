@@ -55,7 +55,7 @@ class PostgresOutboxDeliveryQueueTest {
     @Test
     void tenantFenceAndAckRequireOwnerAndCurrentLease() {
         open();
-        try (store) {
+        try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
             var queue = store.outboxDeliveryQueue();
@@ -78,7 +78,7 @@ class PostgresOutboxDeliveryQueueTest {
     @Test
     void failedDeliveryPreservesIdentityAndFencesExpiredClaim() throws Exception {
         open();
-        try (store) {
+        try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
             var queue = store.outboxDeliveryQueue();
@@ -105,7 +105,7 @@ class PostgresOutboxDeliveryQueueTest {
     @Test
     void explicitPublisherOnlyAcksAfterTransportAcknowledgment() {
         open();
-        try (store) {
+        try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
             var queue = store.outboxDeliveryQueue();
@@ -114,14 +114,14 @@ class PostgresOutboxDeliveryQueueTest {
                     event -> OutboxPublisher.Delivery.ACKNOWLEDGED));
             assertTrue(queue.claim(tenant, "worker-a", Duration.ofSeconds(5)).isEmpty());
             assertFalse(publisher.runOne(tenant, "worker-a", Duration.ofSeconds(5),
-                    event -> fail("published events must not deliver twice")));
+                    event -> { throw new AssertionError("published events must not deliver twice"); }));
         }
     }
 
     @Test
     void exhaustionFromCrashedWorkerIsQuarantined() throws Exception {
         open();
-        try (store) {
+        try (PostgresBillingStore current = store) {
             UUID id = UUID.randomUUID();
             seed(id);
             var queue = store.outboxDeliveryQueue();
