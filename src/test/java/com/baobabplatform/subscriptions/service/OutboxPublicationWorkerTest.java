@@ -22,7 +22,7 @@ class OutboxPublicationWorkerTest {
         }
         @Override public boolean published(Claim claim) { return false; }
         @Override public boolean failed(Claim claim, String code, boolean retryable) { return false; }
-        @Override public boolean replay(String tenant, UUID event, String principal, String approval, String reason) {
+        @Override public boolean replay(String tenant, UUID event, String principal, String approval, String reason, String evidence) {
             return false;
         }
         @Override public Health health(String tenant) {
