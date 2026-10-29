@@ -4,6 +4,11 @@
 -- immutable canonical event identity and historical delivery audit.
 ALTER TABLE billing.outbox ADD COLUMN first_attempt_at timestamptz;
 
+-- Conservatively retain retry age for V10 rows already attempted before
+-- V11 was installed. A migrated retry must not gain a fresh 72-hour horizon.
+UPDATE billing.outbox SET first_attempt_at=COALESCE(first_failure_at,occurred_at)
+WHERE first_attempt_at IS NULL AND attempt_count>0 AND published_at IS NULL;
+
 CREATE TABLE billing.outbox_replay_audit (
     replay_id uuid PRIMARY KEY,
     event_id uuid NOT NULL REFERENCES billing.outbox(event_id),
@@ -12,6 +17,8 @@ CREATE TABLE billing.outbox_replay_audit (
     approval_reference text NOT NULL,
     reason_code text NOT NULL,
     prior_attempt_count integer NOT NULL,
+    CONSTRAINT outbox_replay_approval_one_use
+        UNIQUE (tenant_id,event_id,approval_reference),
     recorded_at timestamptz NOT NULL DEFAULT now(),
     CHECK(length(principal_id) BETWEEN 3 AND 200),
     CHECK(length(approval_reference) BETWEEN 8 AND 256),
