@@ -31,7 +31,7 @@ public interface OutboxDeliveryQueue {
      * and envelope are never rewritten. PUBLISHED rows cannot be replayed.
      */
     boolean replay(String tenantId, java.util.UUID eventId, String verifiedPrincipal,
-                   String approvalReference, String safeReasonCode);
+                   String approvalReference, String safeReasonCode, String evidenceReference);
 
     /** Diagnostic counts; tenant IDs are never exported as metric labels. */
     Health health(String tenantId);
