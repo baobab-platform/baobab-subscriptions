@@ -25,6 +25,14 @@ public interface OutboxDeliveryQueue {
     /** Retryable failures back off; permanent failures and exhaustion quarantine. */
     boolean failed(Claim claim, String safeFailureCode, boolean retryable);
 
+    /**
+     * Operator-only requeue, after independent current policy approval, with
+     * immutable replay audit in the SAME PostgreSQL transaction. The event ID
+     * and envelope are never rewritten. PUBLISHED rows cannot be replayed.
+     */
+    boolean replay(String tenantId, java.util.UUID eventId, String verifiedPrincipal,
+                   String approvalReference, String safeReasonCode, String evidenceReference);
+
     /** Diagnostic counts; tenant IDs are never exported as metric labels. */
     Health health(String tenantId);
 }

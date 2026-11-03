@@ -32,7 +32,8 @@ public final class PostgresBillingStore implements BillingStore, FoundingEventIn
             "db/V5__provider_operations_and_mappings.sql", "db/V6__provider_operation_outcomes.sql",
             "db/V7__provider_supersession.sql",
             "db/V8__cp_subscription_lifecycle_inbox.sql",
-            "db/V9__provider_reconciliation_retry.sql", "db/V10__outbox_delivery_custody.sql"};
+            "db/V9__provider_reconciliation_retry.sql", "db/V10__outbox_delivery_custody.sql",
+            "db/V11__outbox_replay_and_retry_horizon.sql"};
     /** Serialises migrations across replicas starting together. */
     private static final long MIGRATION_LOCK = 0x62616f6261627375L;
 
