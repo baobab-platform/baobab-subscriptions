@@ -25,7 +25,7 @@ This page records how far the running service implements ADR-SUB-0001 to ADR-SUB
 | 0011 | Billing account and payer | Not started | — | Payer/mandate/invoice recipient authority |
 | 0012 | Billing cycles and invoices | Not started | — | Billing cycle/finalisation/invoice projection |
 | 0013 | Payment obligation handoff | Not started | PaymentsPort deny-only; INTERNAL cannot pay | Payments/ERP obligations and settlement convergence |
-| 0014 | Events and transactional messaging | Partial | Transactional outbox, CP/founding inbox, V10/V11 retry custody, 72-hour horizon, signed HTTPS adapter, IAM-gated bounded publisher and fail-closed replay seam (SUB-02 branch) | Accepted Subscriptions receiver, real transport ACK, current publisher identity, approved replay integration and cross-engine reconciliation |
+| 0014 | Events and transactional messaging | Partial | Transactional outbox, CP/founding inbox, V10/V11 retry custody, 72-hour horizon, signed HTTPS adapter, IAM-gated bounded publisher and fail-closed replay seam (merged dormant source, not runtime-qualified) | Accepted Subscriptions receiver, real transport ACK, current publisher identity, approved replay integration and cross-engine reconciliation |
 | 0015 | Kill Bill adapter and portability | Partial | KillBillAdapter, V5–V9 journal, observation-only worker | Native provider certification and authorised dispatch |
 | 0016 | Security and audit | Partial | Workload JWT/issuer-current checks, tenant/revision/idempotency fences and audit | Protected credential, authority and read-access qualification |
 | 0017 | Observability | Partial | Health, logs, provider counts, outbox queue health, bounded SUB-02 worker aggregation | SLOs, telemetry exporter/alerts, protected incident qualification |
