@@ -174,4 +174,36 @@ class SignedHttpsEventTransportTest {
                             "sub-sign-2026",keyFile,client,Clock.systemUTC()));
         } finally { fake.stop(0); }
     }
+
+    @Test
+    void duplicateReceiptKeyMustNeverCountAsDurableAcknowledgement() throws Exception {
+        byte[] secret = new byte[32];
+        java.util.Arrays.fill(secret, (byte) 0x5A);
+        Path keyFile = dir.resolve("event-secret-duplicate-receipt");
+        Files.write(keyFile, secret);
+        OutboxEvent event = event();
+        HttpServer fake = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        fake.createContext("/integration/events", exchange -> {
+            String ambiguous = "{\"event_id\":\"" + event.eventId()
+                    + "\",\"status\":\"ACCEPTED\",\"status\":\"ACCEPTED\","
+                    + "\"received_at\":\"" + TIME + "\"}";
+            byte[] body = ambiguous.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(202, body.length);
+            try (var out = exchange.getResponseBody()) { out.write(body); }
+        });
+        fake.start();
+        try {
+            URI uri = URI.create("http://127.0.0.1:" + fake.getAddress().getPort()
+                    + "/integration/events");
+            var transport = new SignedHttpsEventTransport(uri, "baobab-control-plane",
+                    "sub-sign-2026", keyFile,
+                    HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build(),
+                    Clock.fixed(TIME, ZoneOffset.UTC));
+            assertEquals(OutboxPublisher.Delivery.RETRYABLE_FAILURE, transport.deliver(event));
+        } finally {
+            fake.stop(0);
+        }
+    }
+
 }
