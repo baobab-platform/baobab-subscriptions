@@ -1,6 +1,6 @@
 # SUB-02 follow-on — publisher correctness and telemetry (stacked on PR #55)
 
-**Status:** review-only, no activation. **Dependency:** PR #55 and
+**Status:** source-level engineering only; no publication activation or SUB-02 runtime acceptance. **Dependency:** PR #55 and
 [Shared #418](https://github.com/baobab-platform/shared/issues/418).
 **Governance:** ADR-SUB-0014, ADR-SUB-0016, ADR-SUB-0017,
 ADR-SUB-0018; pinned Shared `events/v1/envelope.schema.json`,
@@ -21,7 +21,7 @@ ADR-SUB-0018; pinned Shared `events/v1/envelope.schema.json`,
    database must not be logged as an ordinary upstream transport
    problem. The eighth failed attempt is correctly classified as
    `QUARANTINED`, with a single shared attempt ceiling.
-3. `SignedHttpsEventTransport` rejects duplicate JSON object keys,
+3. `SignedHttpsEventTransport` rejects duplicate JSON object keys in both\n   persisted event envelopes and remote durable receipts,
    unregistered event types, wrong source/tenant/subject, forged schema
    URI, mismatched persisted occurrence time, invalid canonical
    CloudEvents envelope and invalid payload according to pinned
@@ -81,3 +81,4 @@ a real durable ACK, receiver deduplication, producer rejection,
 revocation, tenant isolation, replay and complete teardown with
 independent evidence custody. **No Subscriptions publisher, monetary
 provider, entitlement or Payments dispatch is activated by this PR.**
+\n## Merge vs activation control\n\nMerging these dormant components is a source-integration decision only. It does not\nselect a recipient, grant issuer authority, enable publisher startup, certify\nindependent runtime acceptance, or alter COMMERCIAL billing readiness.\n\n
