@@ -168,7 +168,11 @@ public final class SignedHttpsEventTransport implements OutboxPublisher.Transpor
                         ? OutboxPublisher.Delivery.PERMANENT_FAILURE
                         : OutboxPublisher.Delivery.RETRYABLE_FAILURE;
             }
-            // A duplicate status/event_id key makes a receiver receipt ambiguous.\n            // Enforce the closed receipt JSON shape before any durable ACK.\n            JsonNode receipt = Json.mapper().reader()\n                    .with(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)\n                    .readTree(response.body());
+            // A duplicate status/event_id key makes a receiver receipt ambiguous.
+            // Enforce the closed receipt JSON shape before any durable ACK.
+            JsonNode receipt = Json.mapper().reader()
+                    .with(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
+                    .readTree(response.body());
             if (receipt == null || !receipt.isObject() || receipt.size() != 3
                     || !receipt.has("event_id") || !receipt.has("status") || !receipt.has("received_at")
                     || !receipt.path("event_id").isTextual()
