@@ -126,9 +126,9 @@ The container runs as a non-root user (UID 10001), carries OCI labels, and has a
 - the real outbox transport/relay (durable queue custody exists, but publication is not activated);
 - metrics.
 
-### SUB-02 (proposal, not activated)
+### SUB-02 (engineering implemented, NOT activated)
 
-The SUB-02 branch provides an HMAC-signed HTTPS delivery adapter using
+The reviewed SUB-02 code provides an HMAC-signed HTTPS delivery adapter using
 Shared's FB-04 wire, a bounded IAM-gated publisher, a 72-hour retry
 horizon and approval-gated immutable replay audit. The only existing
 Shared signed ingress is ERP→CP, which refuses Subscriptions events;

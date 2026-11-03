@@ -15,7 +15,6 @@ import javax.sql.DataSource;
  * No transport I/O occurs under a database lock or transaction.
  */
 public final class PostgresOutboxDeliveryQueue implements OutboxDeliveryQueue {
-    private static final int MAX_ATTEMPTS = 8;
     private final DataSource source;
 
     public PostgresOutboxDeliveryQueue(DataSource source) {

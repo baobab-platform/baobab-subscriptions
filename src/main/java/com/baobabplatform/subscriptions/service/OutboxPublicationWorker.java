@@ -77,7 +77,8 @@ public final class OutboxPublicationWorker implements AutoCloseable {
         };
     }
 
-    public record Tick(int attempted, int tenantsChecked, long pending, long inFlight,
+    public record Tick(int attempted, int acknowledged, int retryScheduled, int quarantinedNow,
+            int lostLease, int tenantsChecked, long pending, long inFlight,
             long retry, long quarantined, long totalAttempts, long oldestUnpublishedSeconds) { }
 
     private final OutboxPublisher publisher;
@@ -122,11 +123,18 @@ public final class OutboxPublicationWorker implements AutoCloseable {
         try {
             Tick t = runOnce();
             // No unbounded tenant/event/worker identifiers or payloads in metrics/logging.
-            Log.info("billing.outbox.publisher.tick", Map.of(
-                    "attempted", t.attempted(), "tenants_checked", t.tenantsChecked(),
-                    "pending", t.pending(), "in_flight", t.inFlight(),
-                    "retry", t.retry(), "quarantined", t.quarantined(),
-                    "oldest_unpublished_seconds", t.oldestUnpublishedSeconds()));
+            Log.info("billing.outbox.publisher.tick", Map.ofEntries(
+                    Map.entry("attempted", t.attempted()),
+                    Map.entry("acknowledged", t.acknowledged()),
+                    Map.entry("retry_scheduled", t.retryScheduled()),
+                    Map.entry("quarantined_now", t.quarantinedNow()),
+                    Map.entry("lost_lease", t.lostLease()),
+                    Map.entry("tenants_checked", t.tenantsChecked()),
+                    Map.entry("pending", t.pending()),
+                    Map.entry("in_flight", t.inFlight()),
+                    Map.entry("retry", t.retry()),
+                    Map.entry("quarantined", t.quarantined()),
+                    Map.entry("oldest_unpublished_seconds", t.oldestUnpublishedSeconds())));
         } catch (RuntimeException rejected) {
             Log.warn("billing.outbox.publisher.blocked",
                     Map.of("reason", rejected.getClass().getSimpleName()));
@@ -138,11 +146,18 @@ public final class OutboxPublicationWorker implements AutoCloseable {
         authority.requireCurrent();
         int count = Math.min(8, tenants.size());
         int start = Math.floorMod(cursor.getAndUpdate(n -> (n + count) % tenants.size()), tenants.size());
-        int sent = 0;
+        int sent = 0, acknowledged = 0, retryScheduled = 0, quarantinedNow = 0, lostLease = 0;
         long pending = 0, inFlight = 0, retry = 0, quarantined = 0, attempts = 0, oldest = 0;
         for (int i = 0; i < count; i++) {
             String tenant = tenants.get((start + i) % tenants.size());
-            if (publisher.runOne(tenant, workerId, lease, transport)) sent++;
+            OutboxPublisher.Outcome outcome = publisher.runOneObserved(tenant, workerId, lease, transport);
+            switch (outcome) {
+                case IDLE -> { }
+                case ACKNOWLEDGED -> { sent++; acknowledged++; }
+                case RETRY_SCHEDULED -> { sent++; retryScheduled++; }
+                case QUARANTINED -> { sent++; quarantinedNow++; }
+                case LEASE_LOST -> { sent++; lostLease++; }
+            }
             var h = queue.health(tenant);
             pending += h.pending();
             inFlight += h.inFlight();
@@ -151,7 +166,8 @@ public final class OutboxPublicationWorker implements AutoCloseable {
             attempts += h.totalAttempts();
             oldest = Math.max(oldest, h.oldestUnpublishedSeconds());
         }
-        return new Tick(sent, count, pending, inFlight, retry, quarantined, attempts, oldest);
+        return new Tick(sent, acknowledged, retryScheduled, quarantinedNow, lostLease,
+                count, pending, inFlight, retry, quarantined, attempts, oldest);
     }
 
     @Override public void close() {
