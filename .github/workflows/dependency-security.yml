@@ -1,0 +1,44 @@
+# BA-SEC-DEP-001 source audit: native dependency checks without protected 
+# environment credentials, issuer activation, provider simulation or deployment.
+name: Native Dependency Security Maintenance
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "13 3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  maven-advisories:
+    name: Daily native Maven runtime/dependency advisory analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Audit the actual Maven reactor and fail closed on CVSS 7+
+        shell: bash
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          set -euo pipefail
+          # Unavailable NVD data is BLOCKED, not a green scan. Optional read-only
+          # API credential is for advisory throughput, never a staging secret.
+          if [ -n "$NVD_API_KEY" ]; then
+            ./mvnw --batch-mode --no-transfer-progress \
+              org.owasp:dependency-check-maven:12.1.0:check \
+              -DfailBuildOnCVSS=7 \
+              "-DnvdApiKey=$NVD_API_KEY"
+          else
+            ./mvnw --batch-mode --no-transfer-progress \
+              org.owasp:dependency-check-maven:12.1.0:check \
+              -DfailBuildOnCVSS=7
+          fi
