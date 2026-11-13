@@ -25,9 +25,9 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <main.class>com.baobabplatform.subscriptions.Application</main.class>
 
-    <jackson.version>2.22.4</jackson.version>
-    <jackson3.version>3.2.4</jackson3.version>
-    <json-schema-validator.version>3.0.8</json-schema-validator.version>
+    <jackson.version>2.23.0</jackson.version>
+    <jackson3.version>3.3.0</jackson3.version>
+    <json-schema-validator.version>3.0.9</json-schema-validator.version>
     <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     <postgresql.version>42.7.14</postgresql.version>
     <hikaricp.version>7.1.0</hikaricp.version>
@@ -128,7 +128,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.6.3</version>
+        <version>3.7.0</version>
         <executions>
           <execution>
             <id>enforce-build-environment</id>
@@ -169,7 +169,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.6.1</version>
         <configuration>
           <environmentVariables>
             <BAOBAB_TEST_CONTRACTS>${project.basedir}/src/main/resources/contracts</BAOBAB_TEST_CONTRACTS>
