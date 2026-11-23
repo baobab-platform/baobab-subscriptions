@@ -5,7 +5,7 @@
   "workspaceFolder": "/workspaces/baobab-subscriptions",
   "shutdownAction": "stopCompose",
   "remoteUser": "vscode",
-  "postCreateCommand": "baobab-verify --contract",
+  "postCreateCommand": "java -version",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -13,6 +13,16 @@
         "github.vscode-github-actions",
         "redhat.vscode-yaml"
       ]
+    }
+  },
+  "runServices": [],
+  "waitFor": "postCreateCommand",
+  "init": true,
+  "updateRemoteUserUID": true,
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "installMaven": true
     }
   }
 }
