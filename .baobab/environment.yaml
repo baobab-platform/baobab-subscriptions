@@ -22,6 +22,6 @@ validation:
     - "development.docker"
     - "development.github_cli"
 notes:
-  - "Headless subscription billing engine on Java 21; Kill Bill adapter exists but dispatch is not financially qualified. The pinned baobab-dev:1.4.4 full image presently resolves Java 17 (versions.lock) and is NOT Java-21 build-compatible. baobab-dev issue #52 tracks the required Java 21 workspace profile. Maven enforces release 21; do not claim devcontainer qualification until the actual published image is tested. Engine persistence and CI target PostgreSQL 17."
-  - "Codespaces/Dev Containers run as one of docker-compose.yml's services (workspace), with a local Postgres backing service brought up automatically alongside it."
+  - "Headless subscription billing engine on Java 21; Kill Bill adapter exists but dispatch is not financially qualified. The baobab-dev:1.4.4 base image does not itself provide Java 21; the Codespaces configuration layers Java 21 and Maven via a Dev Container feature. Do not claim runtime qualification until the feature build and Maven tests pass. Engine persistence and CI target PostgreSQL 17."
+  - "Codespaces/Dev Containers run as one of docker-compose.yml's services (workspace), with PostgreSQL available as an opt-in backing service, not automatically started when the editor opens."
   - "Build and test with the committed Maven wrapper: ./mvnw verify (set TEST_DATABASE_URL=jdbc:postgresql://... to run the PostgreSQL tests)."
